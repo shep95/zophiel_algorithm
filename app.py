@@ -95,7 +95,7 @@ def ask():
     decode = asher_decode(query)
 
     # 6. Synthesize
-    reply = synthesize(hits)
+    reply = synthesize(query, hits, asher_extra=decode or "")
     if cyber:
         reply = cyber + "  " + reply
 
