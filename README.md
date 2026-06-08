@@ -18,7 +18,7 @@
 ![Flask](https://img.shields.io/badge/Flask-REST_API-7c3aed?style=for-the-badge&logo=flask&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-29741_docs-00ff88?style=for-the-badge&logo=sqlite&logoColor=black)
 ![Corpus](https://img.shields.io/badge/Corpus-55_domains-ff6b35?style=for-the-badge)
-![Code_Engine](https://img.shields.io/badge/Code_Engine-26_patterns-00d4ff?style=for-the-badge)
+![Code_Engine](https://img.shields.io/badge/Code_Engine-105_patterns-00d4ff?style=for-the-badge)
 ![Deploy](https://img.shields.io/badge/Deploy-Railway-0f0f0f?style=for-the-badge&logo=railway&logoColor=white)
 ![Auth](https://img.shields.io/badge/Auth-API_Key_Bearer-ff2d55?style=for-the-badge)
 

@@ -22,8 +22,47 @@ _CODE_TRIGGERS = re.compile(
     r"palindrome|factorial|flatten|decorator|traverse|traversal|recursion|sorting|hashing|"
     r"tree|lru cache|two sum|singleton|merge sort|context manager|generator|prime number|"
     r"password|bfs|dfs|caesar cipher|inheritance|rate limiter|rate limiting|matrix multipl|"
-    r"matrix multiply|csv pars|async fetch|async http|aiohttp)\b"
-    r"|\b(write|build|implement|create).{0,30}(rate limit|matrix)",
+    r"matrix multiply|csv pars|async fetch|async http|aiohttp|"
+    # Data Structures
+    r"doubly linked|min heap|max heap|binary heap|trie|prefix tree|hash table|hash map|"
+    r"circular buffer|ring buffer|deque|double.ended queue|"
+    # Sorting
+    r"bubble sort|insertion sort|selection sort|heap sort|counting sort|radix sort|timsort|"
+    # Search
+    r"linear search|jump search|interpolation search|"
+    # Graph
+    r"dijkstra|topological sort|union find|disjoint set|kruskal|minimum spanning|cycle detect|"
+    # Dynamic Programming
+    r"knapsack|longest common subsequence|lcs|longest increasing subsequence|lis|"
+    r"coin change|edit distance|levenshtein|kadane|max subarray|"
+    # Strings
+    r"anagram|run.length encoding|rle compress|kmp|knuth morris|string permut|word count|word freq|"
+    # Math
+    r"gcd|lcm|greatest common|least common|fast power|exponent|prime factor|armstrong number|"
+    r"number to binary|number to hex|base convert|"
+    # Design Patterns
+    r"factory pattern|observer pattern|strategy pattern|builder pattern|command pattern|"
+    r"decorator pattern|"
+    # Functional
+    r"map filter reduce|memoiz|currying|function composition|partial application|"
+    # File I/O
+    r"json read|json write|directory walk|file copy|log pars|"
+    # Networking
+    r"email valid|url pars|http server|"
+    # SQL
+    r"crud|sql aggregat|window function|join type|"
+    # Security
+    r"base64|sha256|xor cipher|hmac|"
+    # Data Processing
+    r"mean median mode|moving average|data normaliz|"
+    # Concurrency
+    r"thread pool|producer consumer|semaphore|"
+    # Recursion/Backtracking
+    r"tower of hanoi|hanoi|permutation|combination|power set|n.queens|queens problem|"
+    # Interview Classics
+    r"valid parentheses|balanced brackets|merge intervals|product except self|"
+    r"sliding window max|rotate array|dutch national flag|three way partition)\b"
+    r"|\b(write|build|implement|create).{0,30}(rate limit|matrix|heap|trie|graph|cache)",
     re.I,
 )
 
@@ -1382,6 +1421,2733 @@ raw = parse_csv("1,2,3\\n4,5,6", has_header=False)
 assert raw == [["1", "2", "3"], ["4", "5", "6"]]
 
 print("All tests passed.")
+''',
+    },
+
+    # ── Doubly Linked List ───────────────────────────────────────────────────
+
+    {
+        "keys": ["doubly linked list", "doubly linked", "double linked list"],
+        "lang": "python",
+        "title": "Doubly Linked List",
+        "complexity": "Insert/Delete at head or tail: O(1) | Search: O(n)",
+        "code": '''\
+from __future__ import annotations
+from typing import Optional, Generic, TypeVar
+
+T = TypeVar("T")
+
+class DNode(Generic[T]):
+    def __init__(self, val: T) -> None:
+        self.val  = val
+        self.prev: Optional[DNode[T]] = None
+        self.next: Optional[DNode[T]] = None
+
+class DoublyLinkedList(Generic[T]):
+    """Doubly linked list with O(1) head/tail insert and delete."""
+
+    def __init__(self) -> None:
+        self.head: Optional[DNode[T]] = None
+        self.tail: Optional[DNode[T]] = None
+        self._size = 0
+
+    def append(self, val: T) -> None:
+        node = DNode(val)
+        if self.tail:
+            self.tail.next = node
+            node.prev = self.tail
+            self.tail = node
+        else:
+            self.head = self.tail = node
+        self._size += 1
+
+    def prepend(self, val: T) -> None:
+        node = DNode(val)
+        if self.head:
+            node.next = self.head
+            self.head.prev = node
+            self.head = node
+        else:
+            self.head = self.tail = node
+        self._size += 1
+
+    def delete(self, val: T) -> bool:
+        cur = self.head
+        while cur:
+            if cur.val == val:
+                if cur.prev: cur.prev.next = cur.next
+                else:        self.head = cur.next
+                if cur.next: cur.next.prev = cur.prev
+                else:        self.tail = cur.prev
+                self._size -= 1
+                return True
+            cur = cur.next
+        return False
+
+    def to_list(self) -> list[T]:
+        result, cur = [], self.head
+        while cur:
+            result.append(cur.val)
+            cur = cur.next
+        return result
+
+    def __len__(self) -> int:
+        return self._size
+
+# --- Test ---
+dll: DoublyLinkedList[int] = DoublyLinkedList()
+dll.append(1); dll.append(2); dll.append(3)
+dll.prepend(0)
+assert dll.to_list() == [0, 1, 2, 3]
+dll.delete(2)
+assert dll.to_list() == [0, 1, 3]
+assert len(dll) == 3
+print("All tests passed.")
+''',
+    },
+
+    # ── Min Heap ─────────────────────────────────────────────────────────────
+
+    {
+        "keys": ["min heap", "max heap", "binary heap", "heap data structure", "implement heap",
+                 "priority queue heap"],
+        "lang": "python",
+        "title": "Min Heap and Max Heap",
+        "complexity": "Push/Pop: O(log n) | Peek: O(1) | Build: O(n)",
+        "code": '''\
+import heapq
+from typing import TypeVar, Generic
+
+T = TypeVar("T", int, float)
+
+class MinHeap:
+    """Min-heap backed by Python\'s heapq. Root is always the smallest element."""
+
+    def __init__(self) -> None:
+        self._data: list[int] = []
+
+    def push(self, val: int) -> None:
+        heapq.heappush(self._data, val)
+
+    def pop(self) -> int:
+        return heapq.heappop(self._data)
+
+    def peek(self) -> int:
+        return self._data[0]
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+class MaxHeap:
+    """Max-heap by negating values before storing in Python\'s min-heap."""
+
+    def __init__(self) -> None:
+        self._data: list[int] = []
+
+    def push(self, val: int) -> None:
+        heapq.heappush(self._data, -val)
+
+    def pop(self) -> int:
+        return -heapq.heappop(self._data)
+
+    def peek(self) -> int:
+        return -self._data[0]
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+def kth_smallest(nums: list[int], k: int) -> int:
+    """Return the kth smallest element using a max-heap of size k. O(n log k)."""
+    heap = MaxHeap()
+    for n in nums:
+        heap.push(n)
+        if len(heap) > k:
+            heap.pop()
+    return heap.peek()
+
+# --- Test ---
+mn = MinHeap()
+for v in [5, 3, 8, 1, 9, 2]:
+    mn.push(v)
+assert mn.pop() == 1
+assert mn.pop() == 2
+assert mn.peek() == 3
+
+mx = MaxHeap()
+for v in [5, 3, 8, 1, 9, 2]:
+    mx.push(v)
+assert mx.pop() == 9
+assert mx.peek() == 8
+
+assert kth_smallest([7, 10, 4, 3, 20, 15], 3) == 7
+print("All tests passed.")
+''',
+    },
+
+    # ── Trie ─────────────────────────────────────────────────────────────────
+
+    {
+        "keys": ["trie", "prefix tree", "implement trie", "trie data structure", "autocomplete trie"],
+        "lang": "python",
+        "title": "Trie (Prefix Tree)",
+        "complexity": "Insert/Search/StartsWith: O(m) where m = word length",
+        "code": '''\
+from __future__ import annotations
+
+class TrieNode:
+    def __init__(self) -> None:
+        self.children: dict[str, TrieNode] = {}
+        self.is_end = False
+
+class Trie:
+    """Prefix tree for O(m) insert, search, and prefix queries.
+
+    Used in autocomplete, spell checkers, and IP routing tables.
+    """
+
+    def __init__(self) -> None:
+        self.root = TrieNode()
+
+    def insert(self, word: str) -> None:
+        node = self.root
+        for ch in word:
+            if ch not in node.children:
+                node.children[ch] = TrieNode()
+            node = node.children[ch]
+        node.is_end = True
+
+    def search(self, word: str) -> bool:
+        node = self._traverse(word)
+        return node is not None and node.is_end
+
+    def starts_with(self, prefix: str) -> bool:
+        return self._traverse(prefix) is not None
+
+    def _traverse(self, s: str) -> TrieNode | None:
+        node = self.root
+        for ch in s:
+            if ch not in node.children:
+                return None
+            node = node.children[ch]
+        return node
+
+    def words_with_prefix(self, prefix: str) -> list[str]:
+        """Return all words that start with prefix."""
+        node = self._traverse(prefix)
+        if not node:
+            return []
+        results: list[str] = []
+        self._dfs(node, prefix, results)
+        return results
+
+    def _dfs(self, node: TrieNode, path: str, results: list[str]) -> None:
+        if node.is_end:
+            results.append(path)
+        for ch, child in node.children.items():
+            self._dfs(child, path + ch, results)
+
+# --- Test ---
+t = Trie()
+for w in ["apple", "app", "application", "apply", "bat", "ball"]:
+    t.insert(w)
+
+assert t.search("apple") == True
+assert t.search("app") == True
+assert t.search("ap") == False
+assert t.starts_with("app") == True
+assert t.starts_with("ba") == True
+assert t.starts_with("xyz") == False
+
+suggestions = sorted(t.words_with_prefix("app"))
+assert suggestions == ["app", "apple", "application", "apply"]
+print("All tests passed.")
+''',
+    },
+
+    # ── Hash Table ───────────────────────────────────────────────────────────
+
+    {
+        "keys": ["hash table", "hash map implementation", "implement hash table",
+                 "custom hash map", "chaining hash"],
+        "lang": "python",
+        "title": "Hash Table (Custom — Separate Chaining)",
+        "complexity": "Avg O(1) get/put/delete | Worst O(n) with collisions",
+        "code": '''\
+from typing import TypeVar, Generic, Optional
+
+K = TypeVar("K")
+V = TypeVar("V")
+
+class HashTable(Generic[K, V]):
+    """Hash table with separate chaining for collision resolution.
+
+    Load factor threshold = 0.75; doubles capacity when exceeded.
+    """
+
+    def __init__(self, initial_capacity: int = 16) -> None:
+        self._cap = initial_capacity
+        self._size = 0
+        self._buckets: list[list[tuple]] = [[] for _ in range(self._cap)]
+
+    def _bucket(self, key: K) -> int:
+        return hash(key) % self._cap
+
+    def put(self, key: K, value: V) -> None:
+        idx = self._bucket(key)
+        for i, (k, _) in enumerate(self._buckets[idx]):
+            if k == key:
+                self._buckets[idx][i] = (key, value)
+                return
+        self._buckets[idx].append((key, value))
+        self._size += 1
+        if self._size / self._cap > 0.75:
+            self._resize()
+
+    def get(self, key: K) -> Optional[V]:
+        for k, v in self._buckets[self._bucket(key)]:
+            if k == key:
+                return v
+        return None
+
+    def delete(self, key: K) -> bool:
+        idx = self._bucket(key)
+        for i, (k, _) in enumerate(self._buckets[idx]):
+            if k == key:
+                self._buckets[idx].pop(i)
+                self._size -= 1
+                return True
+        return False
+
+    def _resize(self) -> None:
+        old = self._buckets
+        self._cap *= 2
+        self._buckets = [[] for _ in range(self._cap)]
+        self._size = 0
+        for bucket in old:
+            for k, v in bucket:
+                self.put(k, v)
+
+    def __len__(self) -> int:
+        return self._size
+
+# --- Test ---
+ht: HashTable[str, int] = HashTable()
+ht.put("a", 1); ht.put("b", 2); ht.put("c", 3)
+assert ht.get("a") == 1
+assert ht.get("b") == 2
+ht.put("a", 99)
+assert ht.get("a") == 99     # update existing key
+assert ht.delete("b") == True
+assert ht.get("b") is None
+assert len(ht) == 2
+print("All tests passed.")
+''',
+    },
+
+    # ── Circular Buffer ──────────────────────────────────────────────────────
+
+    {
+        "keys": ["circular buffer", "ring buffer", "circular queue", "fixed size buffer"],
+        "lang": "python",
+        "title": "Circular Buffer (Ring Buffer)",
+        "complexity": "Read/Write: O(1) | Space: O(capacity)",
+        "code": '''\
+from typing import TypeVar, Generic, Optional
+
+T = TypeVar("T")
+
+class CircularBuffer(Generic[T]):
+    """Fixed-size FIFO buffer that overwrites oldest data when full.
+
+    Used in audio processing, network packet buffers, and log rotation.
+    """
+
+    def __init__(self, capacity: int) -> None:
+        self.capacity = capacity
+        self._buf: list[Optional[T]] = [None] * capacity
+        self._head = 0   # read pointer
+        self._tail = 0   # write pointer
+        self._full = False
+
+    def write(self, item: T) -> None:
+        self._buf[self._tail] = item
+        if self._full:
+            self._head = (self._head + 1) % self.capacity   # overwrite oldest
+        self._tail = (self._tail + 1) % self.capacity
+        self._full = self._head == self._tail
+
+    def read(self) -> Optional[T]:
+        if self.is_empty():
+            return None
+        val = self._buf[self._head]
+        self._full = False
+        self._head = (self._head + 1) % self.capacity
+        return val
+
+    def is_empty(self) -> bool:
+        return not self._full and self._head == self._tail
+
+    def is_full(self) -> bool:
+        return self._full
+
+    def __len__(self) -> int:
+        if self._full:
+            return self.capacity
+        return (self._tail - self._head) % self.capacity
+
+# --- Test ---
+cb: CircularBuffer[int] = CircularBuffer(3)
+cb.write(1); cb.write(2); cb.write(3)
+assert cb.is_full()
+cb.write(4)                 # overwrites 1
+assert cb.read() == 2       # oldest remaining
+assert cb.read() == 3
+assert cb.read() == 4
+assert cb.is_empty()
+print("All tests passed.")
+''',
+    },
+
+    # ── Sorting: Bubble Sort ─────────────────────────────────────────────────
+
+    {
+        "keys": ["bubble sort", "implement bubble sort", "bubblesort"],
+        "lang": "python",
+        "title": "Bubble Sort",
+        "complexity": "Time: O(n²) avg/worst, O(n) best (sorted) | Space: O(1)",
+        "code": '''\
+def bubble_sort(arr: list[int]) -> list[int]:
+    """Repeatedly swap adjacent elements that are out of order.
+
+    Stable sort. Optimised with early-exit when no swaps occur in a pass.
+    Best case O(n) on already-sorted input.
+    """
+    n = len(arr)
+    arr = arr[:]
+    for i in range(n):
+        swapped = False
+        for j in range(0, n - i - 1):
+            if arr[j] > arr[j + 1]:
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
+                swapped = True
+        if not swapped:
+            break   # already sorted
+    return arr
+
+# --- Test ---
+assert bubble_sort([64, 34, 25, 12, 22, 11, 90]) == [11, 12, 22, 25, 34, 64, 90]
+assert bubble_sort([]) == []
+assert bubble_sort([1]) == [1]
+assert bubble_sort([1, 2, 3]) == [1, 2, 3]   # already sorted — early exit
+print("All tests passed.")
+''',
+    },
+
+    # ── Sorting: Insertion Sort ───────────────────────────────────────────────
+
+    {
+        "keys": ["insertion sort", "implement insertion sort"],
+        "lang": "python",
+        "title": "Insertion Sort",
+        "complexity": "Time: O(n²) avg/worst, O(n) best | Space: O(1) | Stable",
+        "code": '''\
+def insertion_sort(arr: list[int]) -> list[int]:
+    """Build sorted portion one element at a time by shifting larger elements right.
+
+    Excellent for small arrays and nearly-sorted data. Online algorithm.
+    """
+    arr = arr[:]
+    for i in range(1, len(arr)):
+        key = arr[i]
+        j = i - 1
+        while j >= 0 and arr[j] > key:
+            arr[j + 1] = arr[j]
+            j -= 1
+        arr[j + 1] = key
+    return arr
+
+# --- Test ---
+assert insertion_sort([12, 11, 13, 5, 6]) == [5, 6, 11, 12, 13]
+assert insertion_sort([]) == []
+assert insertion_sort([1]) == [1]
+assert insertion_sort([5, 4, 3, 2, 1]) == [1, 2, 3, 4, 5]
+print("All tests passed.")
+''',
+    },
+
+    # ── Sorting: Selection Sort ───────────────────────────────────────────────
+
+    {
+        "keys": ["selection sort", "implement selection sort"],
+        "lang": "python",
+        "title": "Selection Sort",
+        "complexity": "Time: O(n²) all cases | Space: O(1) | Not stable",
+        "code": '''\
+def selection_sort(arr: list[int]) -> list[int]:
+    """Find the minimum in the unsorted portion and place it at the front.
+
+    Makes exactly n-1 swaps — good when writes are expensive (e.g. flash memory).
+    """
+    arr = arr[:]
+    n = len(arr)
+    for i in range(n):
+        min_idx = i
+        for j in range(i + 1, n):
+            if arr[j] < arr[min_idx]:
+                min_idx = j
+        arr[i], arr[min_idx] = arr[min_idx], arr[i]
+    return arr
+
+# --- Test ---
+assert selection_sort([64, 25, 12, 22, 11]) == [11, 12, 22, 25, 64]
+assert selection_sort([]) == []
+assert selection_sort([3, 2, 1]) == [1, 2, 3]
+print("All tests passed.")
+''',
+    },
+
+    # ── Sorting: Heap Sort ────────────────────────────────────────────────────
+
+    {
+        "keys": ["heap sort", "heapsort", "implement heap sort"],
+        "lang": "python",
+        "title": "Heap Sort",
+        "complexity": "Time: O(n log n) all cases | Space: O(1) | Not stable",
+        "code": '''\
+def heap_sort(arr: list[int]) -> list[int]:
+    """In-place sort using a max-heap. Guaranteed O(n log n) with O(1) extra space."""
+    arr = arr[:]
+    n = len(arr)
+
+    def heapify(n: int, i: int) -> None:
+        largest = i
+        left, right = 2 * i + 1, 2 * i + 2
+        if left  < n and arr[left]  > arr[largest]: largest = left
+        if right < n and arr[right] > arr[largest]: largest = right
+        if largest != i:
+            arr[i], arr[largest] = arr[largest], arr[i]
+            heapify(n, largest)
+
+    for i in range(n // 2 - 1, -1, -1):   # build max-heap
+        heapify(n, i)
+    for i in range(n - 1, 0, -1):          # extract elements
+        arr[0], arr[i] = arr[i], arr[0]
+        heapify(i, 0)
+    return arr
+
+# --- Test ---
+assert heap_sort([12, 11, 13, 5, 6, 7]) == [5, 6, 7, 11, 12, 13]
+assert heap_sort([]) == []
+assert heap_sort([1]) == [1]
+print("All tests passed.")
+''',
+    },
+
+    # ── Sorting: Counting Sort ────────────────────────────────────────────────
+
+    {
+        "keys": ["counting sort", "implement counting sort"],
+        "lang": "python",
+        "title": "Counting Sort",
+        "complexity": "Time: O(n + k) | Space: O(k) where k = value range",
+        "code": '''\
+def counting_sort(arr: list[int]) -> list[int]:
+    """Non-comparison sort. Optimal for small integer ranges.
+
+    Stable: equal elements maintain relative order.
+    Only works on non-negative integers (or integers with a known min).
+    """
+    if not arr:
+        return []
+    min_val, max_val = min(arr), max(arr)
+    k = max_val - min_val + 1
+    counts = [0] * k
+    for x in arr:
+        counts[x - min_val] += 1
+    result: list[int] = []
+    for i, c in enumerate(counts):
+        result.extend([i + min_val] * c)
+    return result
+
+# --- Test ---
+assert counting_sort([4, 2, 2, 8, 3, 3, 1]) == [1, 2, 2, 3, 3, 4, 8]
+assert counting_sort([]) == []
+assert counting_sort([1]) == [1]
+assert counting_sort([3, 1, 2]) == [1, 2, 3]
+print("All tests passed.")
+''',
+    },
+
+    # ── Sorting: Radix Sort ───────────────────────────────────────────────────
+
+    {
+        "keys": ["radix sort", "implement radix sort"],
+        "lang": "python",
+        "title": "Radix Sort (LSD)",
+        "complexity": "Time: O(d * (n + k)) | Space: O(n + k) where d = digits, k = base",
+        "code": '''\
+def radix_sort(arr: list[int]) -> list[int]:
+    """Least-Significant-Digit radix sort for non-negative integers.
+
+    Processes one digit position at a time using stable counting sort.
+    """
+    if not arr:
+        return []
+    arr = arr[:]
+    max_val = max(arr)
+    exp = 1
+    while max_val // exp > 0:
+        arr = _counting_by_digit(arr, exp)
+        exp *= 10
+    return arr
+
+def _counting_by_digit(arr: list[int], exp: int) -> list[int]:
+    n = len(arr)
+    output = [0] * n
+    count  = [0] * 10
+    for x in arr:
+        count[(x // exp) % 10] += 1
+    for i in range(1, 10):
+        count[i] += count[i - 1]
+    for i in range(n - 1, -1, -1):
+        digit = (arr[i] // exp) % 10
+        output[count[digit] - 1] = arr[i]
+        count[digit] -= 1
+    return output
+
+# --- Test ---
+assert radix_sort([170, 45, 75, 90, 802, 24, 2, 66]) == [2, 24, 45, 66, 75, 90, 170, 802]
+assert radix_sort([]) == []
+assert radix_sort([3, 1, 2]) == [1, 2, 3]
+print("All tests passed.")
+''',
+    },
+
+    # ── Search: Linear Search ────────────────────────────────────────────────
+
+    {
+        "keys": ["linear search", "sequential search", "implement linear search"],
+        "lang": "python",
+        "title": "Linear Search",
+        "complexity": "Time: O(n) | Space: O(1)",
+        "code": '''\
+from typing import TypeVar, Optional
+
+T = TypeVar("T")
+
+def linear_search(arr: list[T], target: T) -> int:
+    """Scan every element. Works on unsorted data. Returns index or -1."""
+    for i, val in enumerate(arr):
+        if val == target:
+            return i
+    return -1
+
+def linear_search_all(arr: list[T], target: T) -> list[int]:
+    """Return all indices where target appears."""
+    return [i for i, val in enumerate(arr) if val == target]
+
+# --- Test ---
+assert linear_search([3, 1, 4, 1, 5, 9], 5) == 4
+assert linear_search([3, 1, 4, 1, 5, 9], 7) == -1
+assert linear_search([], 1) == -1
+assert linear_search_all([1, 2, 1, 3, 1], 1) == [0, 2, 4]
+print("All tests passed.")
+''',
+    },
+
+    # ── Search: Jump Search ───────────────────────────────────────────────────
+
+    {
+        "keys": ["jump search", "block search", "implement jump search"],
+        "lang": "python",
+        "title": "Jump Search",
+        "complexity": "Time: O(√n) | Space: O(1) | Requires sorted array",
+        "code": '''\
+import math
+
+def jump_search(arr: list[int], target: int) -> int:
+    """Jump ahead by √n steps, then linear scan backward.
+
+    Better than linear (O(n)) but slower than binary (O(log n)).
+    Good for sorted arrays where backward traversal is expensive.
+    """
+    n = len(arr)
+    if n == 0:
+        return -1
+    step = int(math.sqrt(n))
+    prev = 0
+    while prev < n and arr[min(step, n) - 1] < target:
+        prev = step
+        step += int(math.sqrt(n))
+        if prev >= n:
+            return -1
+    for i in range(prev, min(step, n)):
+        if arr[i] == target:
+            return i
+    return -1
+
+# --- Test ---
+arr = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144]
+assert jump_search(arr, 55) == 10
+assert jump_search(arr, 3)  == 4
+assert jump_search(arr, 7)  == -1
+assert jump_search([], 1)   == -1
+print("All tests passed.")
+''',
+    },
+
+    # ── Search: Interpolation Search ─────────────────────────────────────────
+
+    {
+        "keys": ["interpolation search", "implement interpolation search"],
+        "lang": "python",
+        "title": "Interpolation Search",
+        "complexity": "Time: O(log log n) avg for uniform data, O(n) worst | Space: O(1)",
+        "code": '''\
+def interpolation_search(arr: list[int], target: int) -> int:
+    """Estimate position by interpolating between low and high values.
+
+    Outperforms binary search on uniformly distributed sorted arrays.
+    Degrades to O(n) on skewed distributions.
+    """
+    lo, hi = 0, len(arr) - 1
+    while lo <= hi and arr[lo] <= target <= arr[hi]:
+        if arr[lo] == arr[hi]:
+            return lo if arr[lo] == target else -1
+        pos = lo + ((target - arr[lo]) * (hi - lo)) // (arr[hi] - arr[lo])
+        if arr[pos] == target:
+            return pos
+        elif arr[pos] < target:
+            lo = pos + 1
+        else:
+            hi = pos - 1
+    return -1
+
+# --- Test ---
+arr = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+assert interpolation_search(arr, 70)  == 6
+assert interpolation_search(arr, 10)  == 0
+assert interpolation_search(arr, 100) == 9
+assert interpolation_search(arr, 55)  == -1
+print("All tests passed.")
+''',
+    },
+
+    # ── Graph: Dijkstra ──────────────────────────────────────────────────────
+
+    {
+        "keys": ["dijkstra", "dijkstra algorithm", "shortest path weighted", "weighted shortest path"],
+        "lang": "python",
+        "title": "Dijkstra's Shortest Path",
+        "complexity": "Time: O((V + E) log V) | Space: O(V)",
+        "code": '''\
+import heapq
+from typing import Optional
+
+Graph = dict[str, list[tuple[str, float]]]  # node -> [(neighbour, weight)]
+
+def dijkstra(graph: Graph, start: str) -> dict[str, float]:
+    """Return shortest distances from start to all reachable nodes.
+
+    Uses a min-heap (priority queue) for greedy selection.
+    Handles directed/undirected weighted graphs with non-negative edges.
+    """
+    dist: dict[str, float] = {start: 0.0}
+    heap: list[tuple[float, str]] = [(0.0, start)]
+
+    while heap:
+        d, u = heapq.heappop(heap)
+        if d > dist.get(u, float("inf")):
+            continue   # stale entry
+        for v, w in graph.get(u, []):
+            nd = d + w
+            if nd < dist.get(v, float("inf")):
+                dist[v] = nd
+                heapq.heappush(heap, (nd, v))
+    return dist
+
+def shortest_path_dijkstra(graph: Graph, start: str, end: str) -> Optional[list[str]]:
+    """Return the actual path (node list) from start to end, or None."""
+    dist: dict[str, float] = {start: 0.0}
+    prev: dict[str, Optional[str]] = {start: None}
+    heap = [(0.0, start)]
+    while heap:
+        d, u = heapq.heappop(heap)
+        if d > dist.get(u, float("inf")):
+            continue
+        if u == end:
+            path: list[str] = []
+            cur: Optional[str] = end
+            while cur is not None:
+                path.append(cur)
+                cur = prev.get(cur)
+            return path[::-1]
+        for v, w in graph.get(u, []):
+            nd = d + w
+            if nd < dist.get(v, float("inf")):
+                dist[v] = nd
+                prev[v] = u
+                heapq.heappush(heap, (nd, v))
+    return None
+
+# --- Test ---
+g: Graph = {
+    "A": [("B", 4), ("C", 2)],
+    "B": [("D", 3), ("C", 1)],
+    "C": [("B", 1), ("D", 5)],
+    "D": [],
+}
+distances = dijkstra(g, "A")
+assert distances["A"] == 0
+assert distances["C"] == 2
+assert distances["B"] == 3   # A->C->B = 2+1 = 3 (cheaper than A->B=4)
+assert distances["D"] == 6   # A->C->B->D = 2+1+3 = 6
+
+path = shortest_path_dijkstra(g, "A", "D")
+assert path == ["A", "C", "B", "D"]
+print("All tests passed.")
+''',
+    },
+
+    # ── Graph: Topological Sort ───────────────────────────────────────────────
+
+    {
+        "keys": ["topological sort", "topological ordering", "dag sort", "dependency order"],
+        "lang": "python",
+        "title": "Topological Sort (Kahn's Algorithm + DFS)",
+        "complexity": "Time: O(V + E) | Space: O(V)",
+        "code": '''\
+from collections import deque
+
+def topological_sort_kahn(graph: dict[str, list[str]]) -> list[str]:
+    """Kahn\'s algorithm using BFS and in-degree counts.
+
+    Returns a valid topological ordering, or [] if a cycle is detected.
+    """
+    in_degree: dict[str, int] = {u: 0 for u in graph}
+    for u in graph:
+        for v in graph[u]:
+            in_degree[v] = in_degree.get(v, 0) + 1
+            if v not in in_degree:
+                in_degree[v] = in_degree.get(v, 0)
+
+    queue = deque(u for u, d in in_degree.items() if d == 0)
+    order: list[str] = []
+    while queue:
+        u = queue.popleft()
+        order.append(u)
+        for v in graph.get(u, []):
+            in_degree[v] -= 1
+            if in_degree[v] == 0:
+                queue.append(v)
+    return order if len(order) == len(in_degree) else []  # [] = cycle
+
+def topological_sort_dfs(graph: dict[str, list[str]]) -> list[str]:
+    """DFS-based topological sort using finish-time stack."""
+    visited: set[str] = set()
+    stack: list[str] = []
+
+    def dfs(node: str) -> None:
+        visited.add(node)
+        for neighbour in graph.get(node, []):
+            if neighbour not in visited:
+                dfs(neighbour)
+        stack.append(node)
+
+    for node in graph:
+        if node not in visited:
+            dfs(node)
+    return stack[::-1]
+
+# --- Test ---
+dag = {
+    "A": ["C"],
+    "B": ["C", "D"],
+    "C": ["E"],
+    "D": ["F"],
+    "E": ["F"],
+    "F": [],
+}
+order = topological_sort_kahn(dag)
+# Verify A before C, C before E, E before F, B before D, D before F
+assert order.index("A") < order.index("C")
+assert order.index("C") < order.index("E")
+assert order.index("E") < order.index("F")
+
+order_dfs = topological_sort_dfs(dag)
+assert order_dfs.index("A") < order_dfs.index("F")
+print("All tests passed.")
+''',
+    },
+
+    # ── Graph: Union-Find ─────────────────────────────────────────────────────
+
+    {
+        "keys": ["union find", "disjoint set", "union find data structure", "path compression"],
+        "lang": "python",
+        "title": "Union-Find (Disjoint Set Union)",
+        "complexity": "Union/Find: O(α(n)) amortised (inverse Ackermann — effectively O(1))",
+        "code": '''\
+class UnionFind:
+    """Disjoint Set Union with path compression and union by rank.
+
+    Used for Kruskal\'s MST, cycle detection, and network connectivity.
+    """
+
+    def __init__(self, n: int) -> None:
+        self.parent = list(range(n))
+        self.rank   = [0] * n
+        self.components = n
+
+    def find(self, x: int) -> int:
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])  # path compression
+        return self.parent[x]
+
+    def union(self, x: int, y: int) -> bool:
+        rx, ry = self.find(x), self.find(y)
+        if rx == ry:
+            return False   # already connected
+        if self.rank[rx] < self.rank[ry]:
+            rx, ry = ry, rx
+        self.parent[ry] = rx
+        if self.rank[rx] == self.rank[ry]:
+            self.rank[rx] += 1
+        self.components -= 1
+        return True
+
+    def connected(self, x: int, y: int) -> bool:
+        return self.find(x) == self.find(y)
+
+# --- Test ---
+uf = UnionFind(6)
+uf.union(0, 1); uf.union(1, 2)
+uf.union(3, 4)
+assert uf.connected(0, 2) == True
+assert uf.connected(0, 3) == False
+assert uf.components == 3   # {0,1,2}, {3,4}, {5}
+uf.union(2, 3)
+assert uf.connected(0, 4) == True
+assert uf.components == 2
+print("All tests passed.")
+''',
+    },
+
+    # ── Graph: Cycle Detection ────────────────────────────────────────────────
+
+    {
+        "keys": ["cycle detection", "detect cycle", "cycle in graph", "has cycle"],
+        "lang": "python",
+        "title": "Cycle Detection (Directed and Undirected Graphs)",
+        "complexity": "Time: O(V + E) | Space: O(V)",
+        "code": '''\
+def has_cycle_directed(graph: dict[str, list[str]]) -> bool:
+    """DFS with colour marking: white=unvisited, grey=in-stack, black=done.
+
+    A grey->grey back-edge means a cycle.
+    """
+    WHITE, GREY, BLACK = 0, 1, 2
+    colour = {u: WHITE for u in graph}
+
+    def dfs(node: str) -> bool:
+        colour[node] = GREY
+        for neighbour in graph.get(node, []):
+            if colour.get(neighbour, WHITE) == GREY:
+                return True   # back edge -> cycle
+            if colour.get(neighbour, WHITE) == WHITE:
+                if dfs(neighbour):
+                    return True
+        colour[node] = BLACK
+        return False
+
+    return any(dfs(u) for u in graph if colour[u] == WHITE)
+
+def has_cycle_undirected(graph: dict[str, list[str]]) -> bool:
+    """Union-Find approach for undirected graphs."""
+    nodes = list(graph.keys())
+    idx   = {n: i for i, n in enumerate(nodes)}
+    uf    = list(range(len(nodes)))
+
+    def find(x: int) -> int:
+        while uf[x] != x:
+            uf[x] = uf[uf[x]]
+            x = uf[x]
+        return x
+
+    for u in graph:
+        for v in graph[u]:
+            if u < v:   # undirected: process each edge once
+                ru, rv = find(idx[u]), find(idx[v])
+                if ru == rv:
+                    return True
+                uf[ru] = rv
+    return False
+
+# --- Test ---
+dag_no_cycle   = {"A": ["B", "C"], "B": ["D"], "C": ["D"], "D": []}
+dag_with_cycle = {"A": ["B"], "B": ["C"], "C": ["A"]}
+assert has_cycle_directed(dag_no_cycle)   == False
+assert has_cycle_directed(dag_with_cycle) == True
+
+ug_no_cycle   = {"A": ["B"], "B": ["A", "C"], "C": ["B"]}
+ug_with_cycle = {"A": ["B", "C"], "B": ["A", "C"], "C": ["A", "B"]}
+assert has_cycle_undirected(ug_no_cycle)   == False
+assert has_cycle_undirected(ug_with_cycle) == True
+print("All tests passed.")
+''',
+    },
+
+    # ── DP: Knapsack 0/1 ──────────────────────────────────────────────────────
+
+    {
+        "keys": ["knapsack", "0/1 knapsack", "01 knapsack", "knapsack problem"],
+        "lang": "python",
+        "title": "0/1 Knapsack (Dynamic Programming)",
+        "complexity": "Time: O(n * W) | Space: O(W) optimised",
+        "code": '''\
+def knapsack(weights: list[int], values: list[int], capacity: int) -> int:
+    """Return the maximum value achievable within weight capacity.
+
+    Each item can be taken at most once (0/1).
+    Uses 1D DP table iterated in reverse to avoid using an item twice.
+    """
+    n = len(weights)
+    dp = [0] * (capacity + 1)
+    for i in range(n):
+        for w in range(capacity, weights[i] - 1, -1):
+            dp[w] = max(dp[w], dp[w - weights[i]] + values[i])
+    return dp[capacity]
+
+def knapsack_with_items(
+    weights: list[int], values: list[int], capacity: int
+) -> tuple[int, list[int]]:
+    """Also return which items were selected."""
+    n = len(weights)
+    dp = [[0] * (capacity + 1) for _ in range(n + 1)]
+    for i in range(1, n + 1):
+        for w in range(capacity + 1):
+            dp[i][w] = dp[i - 1][w]
+            if weights[i - 1] <= w:
+                dp[i][w] = max(dp[i][w], dp[i - 1][w - weights[i - 1]] + values[i - 1])
+    # Backtrack
+    selected: list[int] = []
+    w = capacity
+    for i in range(n, 0, -1):
+        if dp[i][w] != dp[i - 1][w]:
+            selected.append(i - 1)
+            w -= weights[i - 1]
+    return dp[n][capacity], selected[::-1]
+
+# --- Test ---
+weights = [1, 3, 4, 5]
+values  = [1, 4, 5, 7]
+assert knapsack(weights, values, 7) == 9
+
+val, items = knapsack_with_items(weights, values, 7)
+assert val == 9
+assert set(items) == {1, 2}   # items at index 1 (w=3,v=4) and 2 (w=4,v=5)
+print("All tests passed.")
+''',
+    },
+
+    # ── DP: Longest Common Subsequence ────────────────────────────────────────
+
+    {
+        "keys": ["longest common subsequence", "lcs", "lcs algorithm", "common subsequence"],
+        "lang": "python",
+        "title": "Longest Common Subsequence (LCS)",
+        "complexity": "Time: O(m * n) | Space: O(m * n)",
+        "code": '''\
+def lcs_length(s1: str, s2: str) -> int:
+    """Return the length of the longest common subsequence."""
+    m, n = len(s1), len(s2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+    return dp[m][n]
+
+def lcs_string(s1: str, s2: str) -> str:
+    """Return the actual LCS string by backtracking the DP table."""
+    m, n = len(s1), len(s2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+    result: list[str] = []
+    i, j = m, n
+    while i > 0 and j > 0:
+        if s1[i - 1] == s2[j - 1]:
+            result.append(s1[i - 1])
+            i -= 1; j -= 1
+        elif dp[i - 1][j] > dp[i][j - 1]:
+            i -= 1
+        else:
+            j -= 1
+    return "".join(reversed(result))
+
+# --- Test ---
+assert lcs_length("ABCBDAB", "BDCAB") == 4
+assert lcs_string("ABCBDAB", "BDCAB") == "BCAB"
+assert lcs_length("", "ABC") == 0
+assert lcs_length("ABC", "ABC") == 3
+print("All tests passed.")
+''',
+    },
+
+    # ── DP: Longest Increasing Subsequence ────────────────────────────────────
+
+    {
+        "keys": ["longest increasing subsequence", "lis", "lis algorithm"],
+        "lang": "python",
+        "title": "Longest Increasing Subsequence (LIS)",
+        "complexity": "DP: O(n²) | Binary search: O(n log n)",
+        "code": '''\
+import bisect
+
+def lis_length_dp(nums: list[int]) -> int:
+    """O(n²) DP approach — easier to understand."""
+    if not nums:
+        return 0
+    dp = [1] * len(nums)
+    for i in range(1, len(nums)):
+        for j in range(i):
+            if nums[j] < nums[i]:
+                dp[i] = max(dp[i], dp[j] + 1)
+    return max(dp)
+
+def lis_length_fast(nums: list[int]) -> int:
+    """O(n log n) patience sorting approach."""
+    tails: list[int] = []
+    for x in nums:
+        pos = bisect.bisect_left(tails, x)
+        if pos == len(tails):
+            tails.append(x)
+        else:
+            tails[pos] = x
+    return len(tails)
+
+# --- Test ---
+assert lis_length_dp([10, 9, 2, 5, 3, 7, 101, 18]) == 4
+assert lis_length_fast([10, 9, 2, 5, 3, 7, 101, 18]) == 4
+assert lis_length_fast([0, 1, 0, 3, 2, 3]) == 4
+assert lis_length_fast([7, 7, 7]) == 1
+print("All tests passed.")
+''',
+    },
+
+    # ── DP: Coin Change ───────────────────────────────────────────────────────
+
+    {
+        "keys": ["coin change", "minimum coins", "coin change problem"],
+        "lang": "python",
+        "title": "Coin Change (Minimum Coins)",
+        "complexity": "Time: O(amount * len(coins)) | Space: O(amount)",
+        "code": '''\
+def coin_change(coins: list[int], amount: int) -> int:
+    """Return minimum number of coins to make amount, or -1 if impossible."""
+    dp = [float("inf")] * (amount + 1)
+    dp[0] = 0
+    for a in range(1, amount + 1):
+        for coin in coins:
+            if coin <= a:
+                dp[a] = min(dp[a], dp[a - coin] + 1)
+    return int(dp[amount]) if dp[amount] != float("inf") else -1
+
+def coin_change_ways(coins: list[int], amount: int) -> int:
+    """Return the number of distinct combinations that make up amount."""
+    dp = [0] * (amount + 1)
+    dp[0] = 1
+    for coin in coins:
+        for a in range(coin, amount + 1):
+            dp[a] += dp[a - coin]
+    return dp[amount]
+
+# --- Test ---
+assert coin_change([1, 5, 6, 9], 11) == 2     # 5+6
+assert coin_change([2], 3)           == -1    # impossible
+assert coin_change([1, 2, 5], 11)    == 3     # 5+5+1
+assert coin_change_ways([1, 2, 5], 5) == 4    # {5},{2+2+1},{2+1+1+1},{1*5}
+print("All tests passed.")
+''',
+    },
+
+    # ── DP: Edit Distance ─────────────────────────────────────────────────────
+
+    {
+        "keys": ["edit distance", "levenshtein", "levenshtein distance", "string edit distance"],
+        "lang": "python",
+        "title": "Edit Distance (Levenshtein)",
+        "complexity": "Time: O(m * n) | Space: O(min(m, n))",
+        "code": '''\
+def edit_distance(s1: str, s2: str) -> int:
+    """Minimum insert/delete/replace operations to transform s1 into s2."""
+    m, n = len(s1), len(s2)
+    if m < n:
+        s1, s2, m, n = s2, s1, n, m   # ensure s1 is longer for space opt
+    prev = list(range(n + 1))
+    for i in range(1, m + 1):
+        curr = [i] + [0] * n
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                curr[j] = prev[j - 1]
+            else:
+                curr[j] = 1 + min(prev[j],       # delete
+                                   curr[j - 1],   # insert
+                                   prev[j - 1])   # replace
+        prev = curr
+    return prev[n]
+
+# --- Test ---
+assert edit_distance("kitten", "sitting") == 3
+assert edit_distance("", "abc")           == 3
+assert edit_distance("abc", "abc")        == 0
+assert edit_distance("horse", "ros")      == 3
+print("All tests passed.")
+''',
+    },
+
+    # ── DP: Kadane's Max Subarray ─────────────────────────────────────────────
+
+    {
+        "keys": ["kadane", "max subarray", "maximum subarray", "largest sum subarray",
+                 "kadane algorithm"],
+        "lang": "python",
+        "title": "Kadane's Maximum Subarray",
+        "complexity": "Time: O(n) | Space: O(1)",
+        "code": '''\
+def max_subarray(nums: list[int]) -> int:
+    """Return the maximum sum of any contiguous subarray (Kadane\'s algorithm)."""
+    if not nums:
+        return 0
+    max_sum = cur_sum = nums[0]
+    for x in nums[1:]:
+        cur_sum = max(x, cur_sum + x)
+        max_sum = max(max_sum, cur_sum)
+    return max_sum
+
+def max_subarray_with_indices(nums: list[int]) -> tuple[int, int, int]:
+    """Return (max_sum, start_index, end_index)."""
+    max_sum = cur_sum = nums[0]
+    start = end = 0
+    temp_start = 0
+    for i in range(1, len(nums)):
+        if cur_sum + nums[i] < nums[i]:
+            cur_sum = nums[i]
+            temp_start = i
+        else:
+            cur_sum += nums[i]
+        if cur_sum > max_sum:
+            max_sum = cur_sum
+            start = temp_start
+            end = i
+    return max_sum, start, end
+
+# --- Test ---
+assert max_subarray([-2, 1, -3, 4, -1, 2, 1, -5, 4]) == 6   # [4,-1,2,1]
+assert max_subarray([-1, -2, -3]) == -1
+assert max_subarray([1]) == 1
+s, lo, hi = max_subarray_with_indices([-2, 1, -3, 4, -1, 2, 1, -5, 4])
+assert s == 6 and lo == 3 and hi == 6
+print("All tests passed.")
+''',
+    },
+
+    # ── Strings: Anagram Check ───────────────────────────────────────────────
+
+    {
+        "keys": ["anagram", "check anagram", "is anagram", "anagram check"],
+        "lang": "python",
+        "title": "Anagram Check",
+        "complexity": "Time: O(n) | Space: O(k) where k = character set size",
+        "code": '''\
+from collections import Counter
+
+def is_anagram(s1: str, s2: str, ignore_spaces: bool = True) -> bool:
+    """Return True if s1 and s2 are anagrams (same letters, different order)."""
+    if ignore_spaces:
+        s1 = s1.replace(" ", "").lower()
+        s2 = s2.replace(" ", "").lower()
+    return Counter(s1) == Counter(s2)
+
+def group_anagrams(words: list[str]) -> list[list[str]]:
+    """Group a list of words into anagram clusters."""
+    groups: dict[tuple, list[str]] = {}
+    for word in words:
+        key = tuple(sorted(word.lower()))
+        groups.setdefault(key, []).append(word)
+    return list(groups.values())
+
+# --- Test ---
+assert is_anagram("listen", "silent") == True
+assert is_anagram("hello", "world")   == False
+assert is_anagram("Astronomer", "Moon starer") == True
+
+groups = group_anagrams(["eat", "tea", "tan", "ate", "nat", "bat"])
+anagram_sets = [sorted(g) for g in groups]
+assert sorted(["ate", "eat", "tea"]) in anagram_sets
+assert sorted(["nat", "tan"]) in anagram_sets
+print("All tests passed.")
+''',
+    },
+
+    # ── Strings: Run-Length Encoding ──────────────────────────────────────────
+
+    {
+        "keys": ["run length encoding", "rle", "rle compression", "run length compress"],
+        "lang": "python",
+        "title": "Run-Length Encoding (RLE)",
+        "complexity": "Encode/Decode: O(n)",
+        "code": '''\
+def rle_encode(s: str) -> str:
+    """Compress consecutive repeated characters: "aaabbc" -> "3a2bc"."""
+    if not s:
+        return ""
+    result: list[str] = []
+    count = 1
+    for i in range(1, len(s)):
+        if s[i] == s[i - 1]:
+            count += 1
+        else:
+            result.append(("" if count == 1 else str(count)) + s[i - 1])
+            count = 1
+    result.append(("" if count == 1 else str(count)) + s[-1])
+    return "".join(result)
+
+def rle_decode(s: str) -> str:
+    """Decompress RLE string: "3a2bc" -> "aaabbc"."""
+    result: list[str] = []
+    i = 0
+    while i < len(s):
+        count_str = ""
+        while i < len(s) and s[i].isdigit():
+            count_str += s[i]
+            i += 1
+        if i < len(s):
+            count = int(count_str) if count_str else 1
+            result.append(s[i] * count)
+            i += 1
+    return "".join(result)
+
+# --- Test ---
+assert rle_encode("aaabbc")   == "3a2bc"
+assert rle_encode("aabbcc")   == "2a2b2c"
+assert rle_encode("abc")      == "abc"
+assert rle_decode("3a2bc")    == "aaabbc"
+assert rle_decode(rle_encode("aaabbbcccc")) == "aaabbbcccc"
+print("All tests passed.")
+''',
+    },
+
+    # ── Strings: KMP Pattern Match ────────────────────────────────────────────
+
+    {
+        "keys": ["kmp", "knuth morris pratt", "kmp pattern", "string pattern match",
+                 "pattern matching kmp"],
+        "lang": "python",
+        "title": "KMP Pattern Matching",
+        "complexity": "Preprocessing: O(m) | Search: O(n) | Total: O(n + m)",
+        "code": '''\
+def kmp_search(text: str, pattern: str) -> list[int]:
+    """Return all starting indices where pattern appears in text.
+
+    KMP avoids redundant comparisons by precomputing a failure function.
+    """
+    n, m = len(text), len(pattern)
+    if m == 0:
+        return []
+    lps = _build_lps(pattern)
+    matches: list[int] = []
+    i = j = 0
+    while i < n:
+        if text[i] == pattern[j]:
+            i += 1; j += 1
+            if j == m:
+                matches.append(i - m)
+                j = lps[j - 1]
+        else:
+            if j:
+                j = lps[j - 1]
+            else:
+                i += 1
+    return matches
+
+def _build_lps(pattern: str) -> list[int]:
+    """Longest proper prefix which is also suffix — the failure function."""
+    m = len(pattern)
+    lps = [0] * m
+    length = 0
+    i = 1
+    while i < m:
+        if pattern[i] == pattern[length]:
+            length += 1
+            lps[i] = length
+            i += 1
+        elif length:
+            length = lps[length - 1]
+        else:
+            lps[i] = 0
+            i += 1
+    return lps
+
+# --- Test ---
+assert kmp_search("aabaacaadaabaaba", "aaba") == [0, 9, 12]
+assert kmp_search("hello world", "world") == [6]
+assert kmp_search("aaa", "aa") == [0, 1]
+assert kmp_search("abc", "xyz") == []
+print("All tests passed.")
+''',
+    },
+
+    # ── Strings: Permutations ─────────────────────────────────────────────────
+
+    {
+        "keys": ["string permutation", "permutations of string", "all permutations",
+                 "generate permutations"],
+        "lang": "python",
+        "title": "String Permutations",
+        "complexity": "Time: O(n! * n) | Space: O(n!)",
+        "code": '''\
+def permutations(s: str) -> list[str]:
+    """Return all unique permutations of string s."""
+    if len(s) <= 1:
+        return [s]
+    result: set[str] = set()
+    for i, ch in enumerate(s):
+        rest = s[:i] + s[i+1:]
+        for perm in permutations(rest):
+            result.add(ch + perm)
+    return sorted(result)
+
+def permutations_iterative(s: str) -> list[str]:
+    """Heap\'s algorithm — iterative, generates n! permutations in-place."""
+    arr = list(s)
+    n = len(arr)
+    result = []
+    c = [0] * n
+    result.append("".join(arr))
+    i = 0
+    while i < n:
+        if c[i] < i:
+            if i % 2 == 0:
+                arr[0], arr[i] = arr[i], arr[0]
+            else:
+                arr[c[i]], arr[i] = arr[i], arr[c[i]]
+            result.append("".join(arr))
+            c[i] += 1
+            i = 0
+        else:
+            c[i] = 0
+            i += 1
+    return sorted(set(result))
+
+# --- Test ---
+assert permutations("abc") == ["abc", "acb", "bac", "bca", "cab", "cba"]
+assert permutations("aa")  == ["aa"]
+assert sorted(permutations_iterative("abc")) == sorted(permutations("abc"))
+print("All tests passed.")
+''',
+    },
+
+    # ── Strings: Word Count ───────────────────────────────────────────────────
+
+    {
+        "keys": ["word count", "word frequency", "count words", "word counter"],
+        "lang": "python",
+        "title": "Word Frequency Counter",
+        "complexity": "Time: O(n) | Space: O(k) where k = unique words",
+        "code": '''\
+import re
+from collections import Counter
+
+def word_frequency(text: str, top_n: int = 10) -> list[tuple[str, int]]:
+    """Count word occurrences, return top_n most common words."""
+    words = re.findall(r"[a-zA-Z\']+", text.lower())
+    return Counter(words).most_common(top_n)
+
+def word_count(text: str) -> int:
+    """Return total number of words in text."""
+    return len(re.findall(r"\\S+", text.strip()))
+
+# --- Test ---
+text = "the quick brown fox jumps over the lazy dog the fox"
+freq = dict(word_frequency(text))
+assert freq["the"] == 3
+assert freq["fox"] == 2
+assert word_count("hello world foo") == 3
+assert word_count("") == 0
+print("All tests passed.")
+''',
+    },
+
+    # ── Math: GCD / LCM ──────────────────────────────────────────────────────
+
+    {
+        "keys": ["gcd", "lcm", "greatest common divisor", "least common multiple",
+                 "euclidean algorithm"],
+        "lang": "python",
+        "title": "GCD and LCM (Euclidean Algorithm)",
+        "complexity": "GCD: O(log min(a,b)) | LCM: O(log min(a,b))",
+        "code": '''\
+from math import gcd as _gcd
+from functools import reduce
+from typing import Sequence
+
+def gcd(a: int, b: int) -> int:
+    """Greatest common divisor via Euclidean algorithm."""
+    while b:
+        a, b = b, a % b
+    return abs(a)
+
+def lcm(a: int, b: int) -> int:
+    """Least common multiple: |a * b| / gcd(a, b)."""
+    if a == 0 or b == 0:
+        return 0
+    return abs(a * b) // gcd(a, b)
+
+def gcd_multiple(nums: Sequence[int]) -> int:
+    """GCD of a list of integers."""
+    return reduce(gcd, nums)
+
+def lcm_multiple(nums: Sequence[int]) -> int:
+    """LCM of a list of integers."""
+    return reduce(lcm, nums)
+
+# --- Test ---
+assert gcd(48, 18) == 6
+assert gcd(100, 75) == 25
+assert lcm(4, 6)   == 12
+assert lcm(3, 5)   == 15
+assert gcd_multiple([12, 18, 24]) == 6
+assert lcm_multiple([4, 6, 10])   == 60
+print("All tests passed.")
+''',
+    },
+
+    # ── Math: Fast Power ─────────────────────────────────────────────────────
+
+    {
+        "keys": ["fast power", "exponentiation by squaring", "power function", "fast exponent"],
+        "lang": "python",
+        "title": "Fast Power (Exponentiation by Squaring)",
+        "complexity": "Time: O(log n) | Space: O(1)",
+        "code": '''\
+def fast_power(base: int, exp: int, mod: int = None) -> int:
+    """Compute base^exp in O(log exp) using repeated squaring.
+
+    Optional mod parameter for modular exponentiation (cryptography use).
+    """
+    if exp < 0:
+        raise ValueError("Negative exponents not supported for integers")
+    result = 1
+    while exp > 0:
+        if exp % 2 == 1:
+            result = result * base if mod is None else result * base % mod
+        base = base * base if mod is None else base * base % mod
+        exp //= 2
+    return result
+
+# --- Test ---
+assert fast_power(2, 10)       == 1024
+assert fast_power(3, 0)        == 1
+assert fast_power(2, 32)       == 4294967296
+assert fast_power(2, 10, 1000) == 24    # 1024 % 1000
+assert fast_power(5, 3)        == 125
+print("All tests passed.")
+''',
+    },
+
+    # ── Math: Prime Factorization ─────────────────────────────────────────────
+
+    {
+        "keys": ["prime factorization", "prime factors", "factorize number"],
+        "lang": "python",
+        "title": "Prime Factorization",
+        "complexity": "Time: O(√n) | Space: O(log n)",
+        "code": '''\
+def prime_factors(n: int) -> list[int]:
+    """Return sorted list of prime factors of n (with repetition)."""
+    if n < 2:
+        return []
+    factors: list[int] = []
+    d = 2
+    while d * d <= n:
+        while n % d == 0:
+            factors.append(d)
+            n //= d
+        d += 1
+    if n > 1:
+        factors.append(n)
+    return factors
+
+def prime_factor_dict(n: int) -> dict[int, int]:
+    """Return {prime: exponent} factorization."""
+    result: dict[int, int] = {}
+    for p in prime_factors(n):
+        result[p] = result.get(p, 0) + 1
+    return result
+
+# --- Test ---
+assert prime_factors(12)       == [2, 2, 3]
+assert prime_factors(100)      == [2, 2, 5, 5]
+assert prime_factors(13)       == [13]
+assert prime_factor_dict(360)  == {2: 3, 3: 2, 5: 1}
+print("All tests passed.")
+''',
+    },
+
+    # ── Math: Number Conversion ───────────────────────────────────────────────
+
+    {
+        "keys": ["number to binary", "number to hex", "base conversion", "decimal to binary",
+                 "convert to binary", "convert to hex"],
+        "lang": "python",
+        "title": "Number Base Conversion (Binary, Hex, Octal)",
+        "complexity": "Time: O(log n) | Space: O(log n)",
+        "code": '''\
+def to_binary(n: int) -> str:
+    """Convert non-negative integer to binary string (no 0b prefix)."""
+    if n == 0: return "0"
+    bits: list[str] = []
+    x = abs(n)
+    while x:
+        bits.append(str(x & 1))
+        x >>= 1
+    return ("-" if n < 0 else "") + "".join(reversed(bits))
+
+def to_hex(n: int) -> str:
+    """Convert integer to lowercase hex string (no 0x prefix)."""
+    if n == 0: return "0"
+    digits = "0123456789abcdef"
+    result: list[str] = []
+    x = abs(n)
+    while x:
+        result.append(digits[x & 0xF])
+        x >>= 4
+    return ("-" if n < 0 else "") + "".join(reversed(result))
+
+def from_base(s: str, base: int) -> int:
+    """Convert string representation in given base to integer."""
+    return int(s, base)
+
+# --- Test ---
+assert to_binary(10)   == "1010"
+assert to_binary(255)  == "11111111"
+assert to_binary(0)    == "0"
+assert to_hex(255)     == "ff"
+assert to_hex(16)      == "10"
+assert from_base("1010", 2) == 10
+assert from_base("ff", 16)  == 255
+print("All tests passed.")
+''',
+    },
+
+    # ── OOP: Factory Pattern ──────────────────────────────────────────────────
+
+    {
+        "keys": ["factory pattern", "factory method", "implement factory", "factory design pattern"],
+        "lang": "python",
+        "title": "Factory Pattern",
+        "complexity": "O(1) object creation",
+        "code": '''\
+from __future__ import annotations
+from abc import ABC, abstractmethod
+
+class Shape(ABC):
+    @abstractmethod
+    def area(self) -> float: ...
+    @abstractmethod
+    def perimeter(self) -> float: ...
+    def describe(self) -> str:
+        return f"{self.__class__.__name__}: area={self.area():.2f}, perimeter={self.perimeter():.2f}"
+
+class Circle(Shape):
+    def __init__(self, radius: float) -> None:
+        self.radius = radius
+    def area(self) -> float:
+        import math; return math.pi * self.radius ** 2
+    def perimeter(self) -> float:
+        import math; return 2 * math.pi * self.radius
+
+class Rectangle(Shape):
+    def __init__(self, width: float, height: float) -> None:
+        self.width = width; self.height = height
+    def area(self) -> float: return self.width * self.height
+    def perimeter(self) -> float: return 2 * (self.width + self.height)
+
+class Triangle(Shape):
+    def __init__(self, a: float, b: float, c: float) -> None:
+        self.a = a; self.b = b; self.c = c
+    def area(self) -> float:
+        s = (self.a + self.b + self.c) / 2
+        return (s * (s-self.a) * (s-self.b) * (s-self.c)) ** 0.5
+    def perimeter(self) -> float: return self.a + self.b + self.c
+
+class ShapeFactory:
+    """Create shapes by name — decouples client from concrete classes."""
+    _registry: dict[str, type] = {
+        "circle":    Circle,
+        "rectangle": Rectangle,
+        "triangle":  Triangle,
+    }
+
+    @classmethod
+    def create(cls, shape_type: str, **kwargs) -> Shape:
+        klass = cls._registry.get(shape_type.lower())
+        if not klass:
+            raise ValueError(f"Unknown shape: {shape_type!r}")
+        return klass(**kwargs)
+
+    @classmethod
+    def register(cls, name: str, klass: type) -> None:
+        cls._registry[name] = klass
+
+# --- Test ---
+c = ShapeFactory.create("circle", radius=5)
+r = ShapeFactory.create("rectangle", width=4, height=6)
+import math
+assert abs(c.area() - math.pi * 25) < 1e-9
+assert r.area() == 24
+assert r.perimeter() == 20
+try:
+    ShapeFactory.create("hexagon")
+    assert False
+except ValueError:
+    pass
+print("All tests passed.")
+''',
+    },
+
+    # ── OOP: Observer Pattern ─────────────────────────────────────────────────
+
+    {
+        "keys": ["observer pattern", "event listener pattern", "pub sub pattern",
+                 "publish subscribe", "observer design"],
+        "lang": "python",
+        "title": "Observer Pattern (Event System)",
+        "complexity": "Subscribe: O(1) | Notify: O(n listeners)",
+        "code": '''\
+from __future__ import annotations
+from abc import ABC, abstractmethod
+from typing import Any
+
+class Observer(ABC):
+    @abstractmethod
+    def update(self, event: str, data: Any) -> None: ...
+
+class EventEmitter:
+    """Subject that maintains a list of observers per event type."""
+
+    def __init__(self) -> None:
+        self._listeners: dict[str, list[Observer]] = {}
+
+    def subscribe(self, event: str, observer: Observer) -> None:
+        self._listeners.setdefault(event, []).append(observer)
+
+    def unsubscribe(self, event: str, observer: Observer) -> None:
+        if event in self._listeners:
+            self._listeners[event] = [o for o in self._listeners[event] if o is not observer]
+
+    def emit(self, event: str, data: Any = None) -> None:
+        for obs in self._listeners.get(event, []):
+            obs.update(event, data)
+
+class LogObserver(Observer):
+    def __init__(self) -> None:
+        self.log: list[tuple[str, Any]] = []
+    def update(self, event: str, data: Any) -> None:
+        self.log.append((event, data))
+
+# --- Test ---
+emitter = EventEmitter()
+logger1 = LogObserver()
+logger2 = LogObserver()
+
+emitter.subscribe("login",  logger1)
+emitter.subscribe("login",  logger2)
+emitter.subscribe("logout", logger1)
+
+emitter.emit("login",  {"user": "alice"})
+emitter.emit("logout", {"user": "alice"})
+emitter.emit("login",  {"user": "bob"})
+
+assert len(logger1.log) == 3
+assert len(logger2.log) == 2   # only subscribed to login
+emitter.unsubscribe("login", logger2)
+emitter.emit("login", {"user": "charlie"})
+assert len(logger2.log) == 2   # no longer receives login events
+print("All tests passed.")
+''',
+    },
+
+    # ── OOP: Strategy Pattern ─────────────────────────────────────────────────
+
+    {
+        "keys": ["strategy pattern", "strategy design pattern", "implement strategy"],
+        "lang": "python",
+        "title": "Strategy Pattern",
+        "complexity": "Strategy swap: O(1)",
+        "code": '''\
+from __future__ import annotations
+from abc import ABC, abstractmethod
+from typing import Callable
+
+class SortStrategy(ABC):
+    @abstractmethod
+    def sort(self, data: list[int]) -> list[int]: ...
+
+class BubbleSortStrategy(SortStrategy):
+    def sort(self, data: list[int]) -> list[int]:
+        arr = data[:]
+        for i in range(len(arr)):
+            for j in range(len(arr) - i - 1):
+                if arr[j] > arr[j+1]: arr[j], arr[j+1] = arr[j+1], arr[j]
+        return arr
+
+class PythonSortStrategy(SortStrategy):
+    def sort(self, data: list[int]) -> list[int]:
+        return sorted(data)
+
+class Sorter:
+    """Context — delegates sorting to a swappable strategy."""
+
+    def __init__(self, strategy: SortStrategy) -> None:
+        self._strategy = strategy
+
+    def set_strategy(self, strategy: SortStrategy) -> None:
+        self._strategy = strategy
+
+    def sort(self, data: list[int]) -> list[int]:
+        return self._strategy.sort(data)
+
+# --- Test ---
+data = [5, 3, 8, 1, 9, 2]
+sorter = Sorter(BubbleSortStrategy())
+assert sorter.sort(data) == [1, 2, 3, 5, 8, 9]
+sorter.set_strategy(PythonSortStrategy())
+assert sorter.sort(data) == [1, 2, 3, 5, 8, 9]
+print("All tests passed.")
+''',
+    },
+
+    # ── Functional: Map / Filter / Reduce ────────────────────────────────────
+
+    {
+        "keys": ["map filter reduce", "functional programming", "higher order functions",
+                 "map filter python"],
+        "lang": "python",
+        "title": "Map, Filter, Reduce (Functional Programming)",
+        "complexity": "O(n) each",
+        "code": '''\
+from functools import reduce
+from typing import TypeVar, Callable, Iterable
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+def my_map(func: Callable[[T], U], iterable: Iterable[T]) -> list[U]:
+    return [func(x) for x in iterable]
+
+def my_filter(pred: Callable[[T], bool], iterable: Iterable[T]) -> list[T]:
+    return [x for x in iterable if pred(x)]
+
+def my_reduce(func: Callable[[U, T], U], iterable: Iterable[T], initial: U) -> U:
+    result = initial
+    for x in iterable:
+        result = func(result, x)
+    return result
+
+# Compose: pipeline of transformations
+def pipeline(*funcs: Callable) -> Callable:
+    """Apply functions left-to-right."""
+    return lambda x: reduce(lambda v, f: f(v), funcs, x)
+
+# --- Test ---
+nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+assert my_map(lambda x: x * 2, nums)          == [2,4,6,8,10,12,14,16,18,20]
+assert my_filter(lambda x: x % 2 == 0, nums)  == [2,4,6,8,10]
+assert my_reduce(lambda acc, x: acc + x, nums, 0) == 55
+
+double_evens = pipeline(
+    lambda xs: my_filter(lambda x: x % 2 == 0, xs),
+    lambda xs: my_map(lambda x: x * 2, xs),
+)
+assert double_evens([1,2,3,4,5]) == [4, 8]
+print("All tests passed.")
+''',
+    },
+
+    # ── Functional: Memoization Decorator ────────────────────────────────────
+
+    {
+        "keys": ["memoization", "memoize decorator", "memoize function", "cache decorator"],
+        "lang": "python",
+        "title": "Memoization Decorator",
+        "complexity": "First call: O(f(n)) | Cached call: O(1)",
+        "code": '''\
+import functools
+import time
+from typing import Callable, Any
+
+def memoize(func: Callable) -> Callable:
+    """Cache results of pure functions by their arguments."""
+    cache: dict[tuple, Any] = {}
+
+    @functools.wraps(func)
+    def wrapper(*args: Any) -> Any:
+        if args not in cache:
+            cache[args] = func(*args)
+        return cache[args]
+
+    wrapper.cache = cache       # type: ignore[attr-defined]
+    wrapper.cache_clear = lambda: cache.clear()  # type: ignore[attr-defined]
+    return wrapper
+
+@memoize
+def fib(n: int) -> int:
+    if n <= 1: return n
+    return fib(n - 1) + fib(n - 2)
+
+# --- Test ---
+assert fib(0) == 0
+assert fib(10) == 55
+assert fib(30) == 832040
+assert 30 in [k[0] for k in fib.cache]
+fib.cache_clear()
+assert fib.cache == {}
+print("All tests passed.")
+''',
+    },
+
+    # ── Functional: Currying ──────────────────────────────────────────────────
+
+    {
+        "keys": ["currying", "curry function", "curried function", "partial application currying"],
+        "lang": "python",
+        "title": "Currying and Partial Application",
+        "complexity": "O(1) per application",
+        "code": '''\
+import functools
+from typing import Callable, Any
+
+def curry(func: Callable) -> Callable:
+    """Transform f(a, b, c) into f(a)(b)(c). Works for any arity."""
+    import inspect
+    arity = len(inspect.signature(func).parameters)
+
+    @functools.wraps(func)
+    def curried(*args: Any) -> Any:
+        if len(args) >= arity:
+            return func(*args[:arity])
+        return lambda *more: curried(*(args + more))
+
+    return curried
+
+def compose(*funcs: Callable) -> Callable:
+    """Right-to-left function composition: compose(f, g)(x) = f(g(x))."""
+    return functools.reduce(lambda f, g: lambda *args: f(g(*args)), funcs)
+
+# --- Test ---
+@curry
+def add(a: int, b: int, c: int) -> int:
+    return a + b + c
+
+add5 = add(2)(3)    # partial application
+assert add5(4) == 9
+assert add(1)(2)(3) == 6
+assert add(1, 2)(3) == 6
+assert add(1, 2, 3) == 6
+
+double = lambda x: x * 2
+inc    = lambda x: x + 1
+double_then_inc = compose(inc, double)
+assert double_then_inc(5) == 11   # (5*2)+1
+print("All tests passed.")
+''',
+    },
+
+    # ── File I/O: JSON Read/Write ─────────────────────────────────────────────
+
+    {
+        "keys": ["json read", "json write", "read json file", "write json file",
+                 "json file python"],
+        "lang": "python",
+        "title": "JSON Read / Write",
+        "complexity": "O(n) where n = JSON size",
+        "code": '''\
+import json
+import os
+import tempfile
+from typing import Any
+
+def write_json(data: Any, path: str, indent: int = 2) -> None:
+    """Write Python object to a JSON file (UTF-8, with atomic write)."""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=indent, ensure_ascii=False)
+    os.replace(tmp, path)   # atomic on POSIX; best-effort on Windows
+
+def read_json(path: str) -> Any:
+    """Read JSON file and return Python object."""
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+def json_to_str(data: Any, indent: int = 2) -> str:
+    return json.dumps(data, indent=indent, ensure_ascii=False)
+
+def str_to_json(s: str) -> Any:
+    return json.loads(s)
+
+# --- Test ---
+payload = {"name": "Alice", "scores": [10, 20, 30], "active": True}
+
+with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+    path = tmp.name
+
+write_json(payload, path)
+loaded = read_json(path)
+assert loaded == payload
+assert loaded["scores"] == [10, 20, 30]
+os.unlink(path)
+
+assert str_to_json(json_to_str(payload)) == payload
+print("All tests passed.")
+''',
+    },
+
+    # ── Security: Base64 ─────────────────────────────────────────────────────
+
+    {
+        "keys": ["base64", "base64 encode", "base64 decode", "base 64 encoding"],
+        "lang": "python",
+        "title": "Base64 Encode / Decode",
+        "complexity": "O(n)",
+        "code": '''\
+import base64
+
+def b64_encode(data: str | bytes, encoding: str = "utf-8") -> str:
+    """Encode string or bytes to Base64 string."""
+    if isinstance(data, str):
+        data = data.encode(encoding)
+    return base64.b64encode(data).decode("ascii")
+
+def b64_decode(data: str, encoding: str = "utf-8") -> str:
+    """Decode Base64 string back to original string."""
+    return base64.b64decode(data.encode("ascii")).decode(encoding)
+
+def b64_encode_url_safe(data: str) -> str:
+    """URL-safe Base64 (uses - and _ instead of + and /)."""
+    return base64.urlsafe_b64encode(data.encode()).decode("ascii")
+
+def b64_decode_url_safe(data: str) -> str:
+    return base64.urlsafe_b64decode(data.encode("ascii")).decode()
+
+# --- Test ---
+msg = "Hello, World! 🌍"
+encoded = b64_encode(msg)
+assert b64_decode(encoded) == msg
+
+url_enc = b64_encode_url_safe("safe+test/string")
+assert "+" not in url_enc and "/" not in url_enc
+assert b64_decode_url_safe(url_enc) == "safe+test/string"
+print("All tests passed.")
+''',
+    },
+
+    # ── Security: SHA256 ─────────────────────────────────────────────────────
+
+    {
+        "keys": ["sha256", "sha 256", "hash sha256", "sha256 hash", "sha2 hash"],
+        "lang": "python",
+        "title": "SHA-256 Hashing",
+        "complexity": "O(n) where n = input length",
+        "code": '''\
+import hashlib
+import hmac as _hmac
+import os
+
+def sha256(data: str | bytes, encoding: str = "utf-8") -> str:
+    """Return lowercase hex SHA-256 digest."""
+    if isinstance(data, str):
+        data = data.encode(encoding)
+    return hashlib.sha256(data).hexdigest()
+
+def sha256_file(path: str) -> str:
+    """Compute SHA-256 of a file in chunks (memory-efficient)."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+def hash_password(password: str) -> tuple[str, str]:
+    """Hash a password with a random salt. Returns (hash_hex, salt_hex)."""
+    salt = os.urandom(32)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 100_000)
+    return dk.hex(), salt.hex()
+
+def verify_password(password: str, hash_hex: str, salt_hex: str) -> bool:
+    salt = bytes.fromhex(salt_hex)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 100_000)
+    return dk.hex() == hash_hex
+
+# --- Test ---
+assert sha256("hello") == "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+assert sha256(b"hello") == sha256("hello")
+assert sha256("") != sha256("a")
+
+h, s = hash_password("mypassword")
+assert verify_password("mypassword", h, s)
+assert not verify_password("wrongpass", h, s)
+print("All tests passed.")
+''',
+    },
+
+    # ── Data Processing: Statistics ───────────────────────────────────────────
+
+    {
+        "keys": ["mean median mode", "statistics python", "calculate mean", "standard deviation",
+                 "descriptive statistics"],
+        "lang": "python",
+        "title": "Descriptive Statistics (Mean, Median, Mode, Std Dev)",
+        "complexity": "O(n) for mean/std | O(n log n) for median",
+        "code": '''\
+from collections import Counter
+import math
+
+def mean(data: list[float]) -> float:
+    if not data: raise ValueError("empty list")
+    return sum(data) / len(data)
+
+def median(data: list[float]) -> float:
+    if not data: raise ValueError("empty list")
+    s = sorted(data)
+    n = len(s)
+    mid = n // 2
+    return s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2
+
+def mode(data: list) -> list:
+    """Return most common values (may be multiple if tied)."""
+    counts = Counter(data)
+    max_count = max(counts.values())
+    return [k for k, v in counts.items() if v == max_count]
+
+def variance(data: list[float], population: bool = True) -> float:
+    m = mean(data)
+    n = len(data) if population else len(data) - 1
+    if n == 0: raise ValueError("insufficient data")
+    return sum((x - m) ** 2 for x in data) / n
+
+def std_dev(data: list[float], population: bool = True) -> float:
+    return math.sqrt(variance(data, population))
+
+def summary(data: list[float]) -> dict:
+    return {
+        "n":      len(data),
+        "mean":   mean(data),
+        "median": median(data),
+        "mode":   mode(data),
+        "std":    std_dev(data),
+        "min":    min(data),
+        "max":    max(data),
+        "range":  max(data) - min(data),
+    }
+
+# --- Test ---
+data = [2, 4, 4, 4, 5, 5, 7, 9]
+assert mean(data)   == 5.0
+assert median(data) == 4.5
+assert mode(data)   == [4]
+assert abs(std_dev(data) - 2.0) < 1e-9
+s = summary(data)
+assert s["min"] == 2 and s["max"] == 9
+print("All tests passed.")
+''',
+    },
+
+    # ── Data Processing: Moving Average ──────────────────────────────────────
+
+    {
+        "keys": ["moving average", "rolling average", "sliding average", "window average"],
+        "lang": "python",
+        "title": "Moving Average (Simple and Exponential)",
+        "complexity": "SMA: O(n) | EMA: O(n)",
+        "code": '''\
+from collections import deque
+
+def simple_moving_average(data: list[float], window: int) -> list[float]:
+    """Compute SMA with a fixed window. Returns list shorter by (window-1)."""
+    if window > len(data):
+        return []
+    result: list[float] = []
+    window_sum = sum(data[:window])
+    result.append(window_sum / window)
+    for i in range(window, len(data)):
+        window_sum += data[i] - data[i - window]
+        result.append(window_sum / window)
+    return result
+
+def exponential_moving_average(data: list[float], alpha: float = 0.3) -> list[float]:
+    """EMA with smoothing factor alpha. More weight on recent values."""
+    if not data: return []
+    ema = [data[0]]
+    for x in data[1:]:
+        ema.append(alpha * x + (1 - alpha) * ema[-1])
+    return ema
+
+# --- Test ---
+prices = [10, 11, 12, 11, 10, 11, 12, 13, 12, 11]
+sma3 = simple_moving_average(prices, 3)
+assert len(sma3) == 8
+assert abs(sma3[0] - 11.0) < 1e-9   # (10+11+12)/3
+assert abs(sma3[1] - (11+12+11)/3) < 1e-9
+
+ema = exponential_moving_average(prices, alpha=0.5)
+assert len(ema) == len(prices)
+assert ema[0] == prices[0]
+print("All tests passed.")
+''',
+    },
+
+    # ── Concurrency: Thread Pool ──────────────────────────────────────────────
+
+    {
+        "keys": ["thread pool", "threadpool", "concurrent futures", "parallel tasks"],
+        "lang": "python",
+        "title": "Thread Pool (concurrent.futures)",
+        "complexity": "Scales with I/O concurrency",
+        "code": '''\
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+from typing import Callable, TypeVar, Any
+
+T = TypeVar("T")
+
+def run_parallel(func: Callable, items: list, max_workers: int = 4) -> list:
+    """Run func(item) in parallel for each item. Returns results in order."""
+    results = [None] * len(items)
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {pool.submit(func, item): i for i, item in enumerate(items)}
+        for future in as_completed(futures):
+            idx = futures[future]
+            results[idx] = future.result()
+    return results
+
+def run_parallel_with_errors(func: Callable, items: list, max_workers: int = 4) -> list[dict]:
+    """Return list of {index, result, error} dicts."""
+    results = [None] * len(items)
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {pool.submit(func, item): i for i, item in enumerate(items)}
+        for future in as_completed(futures):
+            idx = futures[future]
+            try:
+                results[idx] = {"index": idx, "result": future.result(), "error": None}
+            except Exception as e:
+                results[idx] = {"index": idx, "result": None, "error": str(e)}
+    return results
+
+# --- Test ---
+def slow_square(x: int) -> int:
+    time.sleep(0.01)
+    return x * x
+
+nums = [1, 2, 3, 4, 5]
+results = run_parallel(slow_square, nums)
+assert results == [1, 4, 9, 16, 25]
+
+def sometimes_fails(x: int) -> int:
+    if x == 3: raise ValueError("bad value")
+    return x
+
+err_results = run_parallel_with_errors(sometimes_fails, [1, 2, 3, 4])
+assert err_results[0]["result"] == 1
+assert err_results[2]["error"] == "bad value"
+print("All tests passed.")
+''',
+    },
+
+    # ── Concurrency: Producer-Consumer ────────────────────────────────────────
+
+    {
+        "keys": ["producer consumer", "producer consumer pattern", "queue threading"],
+        "lang": "python",
+        "title": "Producer-Consumer Pattern",
+        "complexity": "O(1) per put/get (bounded queue)",
+        "code": '''\
+import queue
+import threading
+import time
+
+def producer_consumer_demo() -> list[int]:
+    """Producer puts items; consumer processes them. Synchronised via queue."""
+    work_queue: queue.Queue[int] = queue.Queue(maxsize=10)
+    results: list[int] = []
+    lock = threading.Lock()
+
+    def producer(n: int) -> None:
+        for i in range(n):
+            work_queue.put(i)
+        work_queue.put(None)   # sentinel: signals end of work
+
+    def consumer() -> None:
+        while True:
+            item = work_queue.get()
+            if item is None:
+                break
+            with lock:
+                results.append(item * 2)
+            work_queue.task_done()
+
+    t_prod = threading.Thread(target=producer, args=(5,))
+    t_cons = threading.Thread(target=consumer)
+    t_prod.start(); t_cons.start()
+    t_prod.join();  t_cons.join()
+    return sorted(results)
+
+# --- Test ---
+result = producer_consumer_demo()
+assert result == [0, 2, 4, 6, 8]
+print("All tests passed.")
+''',
+    },
+
+    # ── Recursion: Tower of Hanoi ─────────────────────────────────────────────
+
+    {
+        "keys": ["tower of hanoi", "hanoi", "hanoi problem", "towers of hanoi"],
+        "lang": "python",
+        "title": "Tower of Hanoi",
+        "complexity": "Time: O(2^n) | Moves: 2^n - 1",
+        "code": '''\
+def hanoi(n: int, source: str = "A", target: str = "C", aux: str = "B") -> list[tuple[str, str]]:
+    """Return list of (from, to) moves to solve n-disk Tower of Hanoi.
+
+    Strategy: move n-1 disks to aux, move largest to target, move n-1 to target.
+    """
+    moves: list[tuple[str, str]] = []
+    def _solve(disks: int, src: str, tgt: str, aux: str) -> None:
+        if disks == 0:
+            return
+        _solve(disks - 1, src, aux, tgt)
+        moves.append((src, tgt))
+        _solve(disks - 1, aux, tgt, src)
+    _solve(n, source, target, aux)
+    return moves
+
+# --- Test ---
+moves = hanoi(3)
+assert len(moves) == 7          # 2^3 - 1
+assert moves[0]  == ("A", "C")  # first move
+assert moves[-1] == ("A", "C")  # last move
+# Verify: simulate pegs
+pegs: dict[str, list[int]] = {"A": [3,2,1], "B": [], "C": []}
+for src, tgt in moves:
+    pegs[tgt].append(pegs[src].pop())
+assert pegs["A"] == [] and pegs["C"] == [3, 2, 1]
+print("All tests passed.")
+''',
+    },
+
+    # ── Recursion/Backtracking: N-Queens ──────────────────────────────────────
+
+    {
+        "keys": ["n queens", "n-queens", "eight queens", "queens problem", "n queens problem"],
+        "lang": "python",
+        "title": "N-Queens Problem",
+        "complexity": "Time: O(n!) worst | Backtracking prunes heavily",
+        "code": '''\
+def solve_n_queens(n: int) -> list[list[str]]:
+    """Return all valid n-queens board configurations.
+
+    Each solution is a list of n strings, each of length n.
+    Q = queen, . = empty.
+    """
+    solutions: list[list[str]] = []
+    cols:    set[int] = set()
+    diag1:   set[int] = set()   # row - col
+    diag2:   set[int] = set()   # row + col
+    board    = [["." ] * n for _ in range(n)]
+
+    def backtrack(row: int) -> None:
+        if row == n:
+            solutions.append(["".join(r) for r in board])
+            return
+        for col in range(n):
+            if col in cols or (row - col) in diag1 or (row + col) in diag2:
+                continue
+            cols.add(col); diag1.add(row - col); diag2.add(row + col)
+            board[row][col] = "Q"
+            backtrack(row + 1)
+            board[row][col] = "."
+            cols.discard(col); diag1.discard(row - col); diag2.discard(row + col)
+
+    backtrack(0)
+    return solutions
+
+# --- Test ---
+assert len(solve_n_queens(4)) == 2
+assert len(solve_n_queens(8)) == 92
+sol = solve_n_queens(4)[0]
+assert len(sol) == 4
+assert all(row.count("Q") == 1 for row in sol)
+print("All tests passed.")
+''',
+    },
+
+    # ── Recursion/Backtracking: Combinations ─────────────────────────────────
+
+    {
+        "keys": ["combinations", "power set", "all subsets", "combination algorithm",
+                 "generate subsets"],
+        "lang": "python",
+        "title": "Combinations and Power Set",
+        "complexity": "Power set: O(2^n) | k-combinations: O(C(n,k))",
+        "code": '''\
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def power_set(items: list[T]) -> list[list[T]]:
+    """Return all 2^n subsets of items."""
+    result: list[list[T]] = [[]]
+    for item in items:
+        result += [subset + [item] for subset in result]
+    return result
+
+def combinations(items: list[T], k: int) -> list[list[T]]:
+    """Return all C(n,k) combinations of size k."""
+    if k == 0:
+        return [[]]
+    if not items or k > len(items):
+        return []
+    result: list[list[T]] = []
+    def backtrack(start: int, path: list[T]) -> None:
+        if len(path) == k:
+            result.append(path[:])
+            return
+        for i in range(start, len(items)):
+            path.append(items[i])
+            backtrack(i + 1, path)
+            path.pop()
+    backtrack(0, [])
+    return result
+
+# --- Test ---
+ps = power_set([1, 2, 3])
+assert len(ps) == 8
+assert [] in ps
+assert [1, 2, 3] in ps
+
+c23 = combinations([1, 2, 3, 4], 2)
+assert len(c23) == 6
+assert [1, 2] in c23 and [3, 4] in c23
+print("All tests passed.")
+''',
+    },
+
+    # ── Interview: Valid Parentheses ──────────────────────────────────────────
+
+    {
+        "keys": ["valid parentheses", "balanced brackets", "matching brackets",
+                 "balanced parentheses"],
+        "lang": "python",
+        "title": "Valid Parentheses / Balanced Brackets",
+        "complexity": "Time: O(n) | Space: O(n)",
+        "code": '''\
+def is_valid_parentheses(s: str) -> bool:
+    """Return True if brackets in s are correctly matched and nested.
+
+    Handles (), [], {}.
+    """
+    stack: list[str] = []
+    matching = {")": "(", "]": "[", "}": "{"}
+    for ch in s:
+        if ch in "([{":
+            stack.append(ch)
+        elif ch in ")]}":
+            if not stack or stack[-1] != matching[ch]:
+                return False
+            stack.pop()
+    return len(stack) == 0
+
+# --- Test ---
+assert is_valid_parentheses("()")         == True
+assert is_valid_parentheses("()[]{}")     == True
+assert is_valid_parentheses("{[()]}")     == True
+assert is_valid_parentheses("(]")         == False
+assert is_valid_parentheses("([)]")       == False
+assert is_valid_parentheses("{[]}")       == True
+assert is_valid_parentheses("")           == True
+assert is_valid_parentheses("((")         == False
+print("All tests passed.")
+''',
+    },
+
+    # ── Interview: Merge Intervals ────────────────────────────────────────────
+
+    {
+        "keys": ["merge intervals", "overlapping intervals", "interval merging"],
+        "lang": "python",
+        "title": "Merge Overlapping Intervals",
+        "complexity": "Time: O(n log n) | Space: O(n)",
+        "code": '''\
+def merge_intervals(intervals: list[list[int]]) -> list[list[int]]:
+    """Merge all overlapping intervals. Input: [[start, end], ...]."""
+    if not intervals:
+        return []
+    intervals = sorted(intervals, key=lambda x: x[0])
+    merged = [intervals[0][:]]
+    for start, end in intervals[1:]:
+        if start <= merged[-1][1]:       # overlaps
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    return merged
+
+# --- Test ---
+assert merge_intervals([[1,3],[2,6],[8,10],[15,18]]) == [[1,6],[8,10],[15,18]]
+assert merge_intervals([[1,4],[4,5]])                == [[1,5]]
+assert merge_intervals([[1,4],[2,3]])                == [[1,4]]
+assert merge_intervals([])                           == []
+print("All tests passed.")
+''',
+    },
+
+    # ── Interview: Product Except Self ────────────────────────────────────────
+
+    {
+        "keys": ["product except self", "product of array except self", "array product"],
+        "lang": "python",
+        "title": "Product of Array Except Self",
+        "complexity": "Time: O(n) | Space: O(1) output only",
+        "code": '''\
+def product_except_self(nums: list[int]) -> list[int]:
+    """Return output[i] = product of all elements except nums[i].
+
+    No division. Two-pass: left products, then right products.
+    """
+    n = len(nums)
+    result = [1] * n
+    left = 1
+    for i in range(n):
+        result[i] = left
+        left *= nums[i]
+    right = 1
+    for i in range(n - 1, -1, -1):
+        result[i] *= right
+        right *= nums[i]
+    return result
+
+# --- Test ---
+assert product_except_self([1, 2, 3, 4]) == [24, 12, 8, 6]
+assert product_except_self([0, 1, 2])    == [2, 0, 0]
+assert product_except_self([-1, 1, 0, -3, 3]) == [0, 0, 9, 0, 0]
+print("All tests passed.")
+''',
+    },
+
+    # ── Interview: Sliding Window Maximum ────────────────────────────────────
+
+    {
+        "keys": ["sliding window max", "sliding window maximum", "window max deque"],
+        "lang": "python",
+        "title": "Sliding Window Maximum",
+        "complexity": "Time: O(n) | Space: O(k)",
+        "code": '''\
+from collections import deque
+
+def sliding_window_max(nums: list[int], k: int) -> list[int]:
+    """Return max of each sliding window of size k using a monotonic deque.
+
+    Deque stores indices; front is always the index of the current window max.
+    """
+    result: list[int] = []
+    dq: deque[int] = deque()   # indices, decreasing order of nums values
+
+    for i, x in enumerate(nums):
+        # remove indices outside window
+        while dq and dq[0] < i - k + 1:
+            dq.popleft()
+        # remove smaller values from back (they can never be max)
+        while dq and nums[dq[-1]] < x:
+            dq.pop()
+        dq.append(i)
+        if i >= k - 1:
+            result.append(nums[dq[0]])
+    return result
+
+# --- Test ---
+assert sliding_window_max([1,3,-1,-3,5,3,6,7], 3) == [3,3,5,5,6,7]
+assert sliding_window_max([1], 1)                  == [1]
+assert sliding_window_max([4,3,2,1], 2)            == [4,3,2]
+print("All tests passed.")
+''',
+    },
+
+    # ── Interview: Dutch National Flag ────────────────────────────────────────
+
+    {
+        "keys": ["dutch national flag", "three way partition", "sort 0 1 2",
+                 "three color sort"],
+        "lang": "python",
+        "title": "Dutch National Flag (3-Way Partition)",
+        "complexity": "Time: O(n) | Space: O(1)",
+        "code": '''\
+def dutch_national_flag(arr: list[int]) -> list[int]:
+    """Sort array of 0s, 1s, 2s in one pass (Dijkstra\'s 3-way partition).
+
+    Uses three pointers: lo (0-boundary), mid (current), hi (2-boundary).
+    """
+    arr = arr[:]
+    lo = mid = 0
+    hi = len(arr) - 1
+    while mid <= hi:
+        if arr[mid] == 0:
+            arr[lo], arr[mid] = arr[mid], arr[lo]
+            lo += 1; mid += 1
+        elif arr[mid] == 1:
+            mid += 1
+        else:
+            arr[mid], arr[hi] = arr[hi], arr[mid]
+            hi -= 1
+    return arr
+
+# --- Test ---
+assert dutch_national_flag([2,0,2,1,1,0])       == [0,0,1,1,2,2]
+assert dutch_national_flag([2,0,1])              == [0,1,2]
+assert dutch_national_flag([0])                  == [0]
+assert dutch_national_flag([1,1,1,0,0,0,2,2,2]) == [0,0,0,1,1,1,2,2,2]
+print("All tests passed.")
+''',
+    },
+
+    # ── Interview: Rotate Array ───────────────────────────────────────────────
+
+    {
+        "keys": ["rotate array", "array rotation", "rotate list"],
+        "lang": "python",
+        "title": "Rotate Array",
+        "complexity": "Time: O(n) | Space: O(1) in-place",
+        "code": '''\
+def rotate_array(nums: list[int], k: int) -> list[int]:
+    """Rotate array right by k steps in-place using reversal trick."""
+    n = len(nums)
+    if n == 0: return nums
+    nums = nums[:]
+    k %= n
+    nums.reverse()
+    nums[:k] = nums[:k][::-1]
+    nums[k:]  = nums[k:][::-1]
+    return nums
+
+def rotate_left(nums: list[int], k: int) -> list[int]:
+    n = len(nums)
+    if n == 0: return nums
+    k %= n
+    return nums[k:] + nums[:k]
+
+# --- Test ---
+assert rotate_array([1,2,3,4,5,6,7], 3) == [5,6,7,1,2,3,4]
+assert rotate_array([1,2], 3)           == [2,1]   # k > n
+assert rotate_left([1,2,3,4,5], 2)      == [3,4,5,1,2]
+print("All tests passed.")
+''',
+    },
+
+    # ── SQL: CRUD Operations ──────────────────────────────────────────────────
+
+    {
+        "keys": ["crud sql", "sql crud", "insert update delete select", "basic sql operations"],
+        "lang": "sql",
+        "title": "SQL CRUD Operations",
+        "complexity": "Depends on indexes",
+        "code": '''\
+-- CREATE TABLE
+CREATE TABLE users (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    username   TEXT    NOT NULL UNIQUE,
+    email      TEXT    NOT NULL,
+    age        INTEGER CHECK(age >= 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- INSERT (Create)
+INSERT INTO users (username, email, age) VALUES
+    (\'alice\', \'alice@example.com\', 30),
+    (\'bob\',   \'bob@example.com\',   25);
+
+-- SELECT (Read)
+SELECT id, username, email FROM users WHERE age > 20 ORDER BY username;
+
+-- UPDATE
+UPDATE users SET email = \'newemail@example.com\', age = 31
+WHERE username = \'alice\';
+
+-- DELETE
+DELETE FROM users WHERE username = \'bob\';
+
+-- UPSERT (INSERT or UPDATE if exists) — SQLite syntax
+INSERT INTO users (username, email, age)
+VALUES (\'charlie\', \'charlie@example.com\', 28)
+ON CONFLICT(username) DO UPDATE SET
+    email = excluded.email,
+    age   = excluded.age;
+
+-- SELECT with JOIN
+SELECT u.username, o.order_date, o.total
+FROM users u
+INNER JOIN orders o ON o.user_id = u.id
+WHERE o.total > 100
+ORDER BY o.order_date DESC
+LIMIT 10;
+''',
+    },
+
+    # ── SQL: Aggregations ─────────────────────────────────────────────────────
+
+    {
+        "keys": ["sql aggregation", "sql aggregate", "group by having", "count sum avg sql"],
+        "lang": "sql",
+        "title": "SQL Aggregations (GROUP BY, HAVING, COUNT, SUM, AVG)",
+        "complexity": "O(n log n) with GROUP BY",
+        "code": '''\
+-- Basic aggregations
+SELECT
+    department,
+    COUNT(*)         AS employee_count,
+    AVG(salary)      AS avg_salary,
+    MAX(salary)      AS max_salary,
+    MIN(salary)      AS min_salary,
+    SUM(salary)      AS total_payroll
+FROM employees
+GROUP BY department
+HAVING COUNT(*) > 5           -- filter AFTER aggregation
+ORDER BY avg_salary DESC;
+
+-- Count distinct values
+SELECT COUNT(DISTINCT country) AS unique_countries FROM customers;
+
+-- Aggregate with CASE (conditional count)
+SELECT
+    department,
+    COUNT(*) AS total,
+    SUM(CASE WHEN salary > 80000 THEN 1 ELSE 0 END) AS high_earners,
+    ROUND(100.0 * SUM(CASE WHEN salary > 80000 THEN 1 ELSE 0 END) / COUNT(*), 2) AS pct_high
+FROM employees
+GROUP BY department;
+
+-- Running total with window function
+SELECT
+    order_date,
+    amount,
+    SUM(amount) OVER (ORDER BY order_date) AS running_total
+FROM orders;
 ''',
     },
 
