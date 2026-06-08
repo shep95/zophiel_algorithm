@@ -89,57 +89,85 @@ def _corpus_confidence(hits: list) -> float:
 # ---------------------------------------------------------------------------
 import urllib.request, urllib.parse as _urlparse
 
-def _wikipedia_search(query: str) -> list[dict]:
-    """Fetch top 3 Wikipedia articles, score sentences by query word overlap."""
-    hits = []
-    try:
-        params = _urlparse.urlencode({
-            "action": "query", "list": "search",
-            "srsearch": query, "format": "json", "srlimit": 3,
-        })
-        req = urllib.request.Request(
-            f"https://en.wikipedia.org/w/api.php?{params}",
-            headers={"User-Agent": "Zophiel/SOLIA 1.0 (educational)"},
-        )
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = json.loads(resp.read().decode())
-        results = data.get("query", {}).get("search", [])
-        if not results:
-            return hits
+def _extract_subject(query: str) -> list[str]:
+    """Return candidate Wikipedia titles to try, most specific first."""
+    q = re.sub(
+        r"^(when did|who is|who was|what is|what was|where did|where is|"
+        r"how did|how does|tell me about|explain|describe|what happened to)\s+",
+        "", query.strip(), flags=re.I,
+    )
+    # Cut at connectors
+    q = re.split(r"\s+(and\s+what|and\s+|,|because|but)\s*", q, maxsplit=1)[0]
+    # Strip trailing verbs / common stop words
+    q = re.sub(r"\s+(die|died|death|born|live|famous|young|old|known|called)\s*$", "", q, flags=re.I).strip()
+    candidates = [q]
+    # Also try without leading "Queen" / "King" / "President" honorific
+    no_title = re.sub(r"^(queen|king|president|prime minister|prince|princess)\s+", "", q, flags=re.I).strip()
+    if no_title and no_title != q:
+        candidates.append(no_title)
+    return candidates
 
-        titles = "|".join(r["title"] for r in results)
-        query_words = set(re.findall(r"[a-z]{3,}", query.lower()))
 
-        params2 = _urlparse.urlencode({
-            "action": "query", "titles": titles,
-            "prop": "extracts", "exintro": "1", "explaintext": "1",
-            "format": "json",
-        })
-        req2 = urllib.request.Request(
-            f"https://en.wikipedia.org/w/api.php?{params2}",
-            headers={"User-Agent": "Zophiel/SOLIA 1.0 (educational)"},
-        )
-        with urllib.request.urlopen(req2, timeout=8) as resp2:
-            data2 = json.loads(resp2.read().decode())
-
-        candidates: list[tuple[float, str, str]] = []
-        for page in data2.get("query", {}).get("pages", {}).values():
-            title = page.get("title", "wikipedia")
-            extract = page.get("extract", "").strip()
-            if not extract:
+def _fetch_wiki_pages(titles: str, query_words: set) -> list[dict]:
+    """Fetch Wikipedia intro extracts for pipe-separated titles, score sentences."""
+    params = _urlparse.urlencode({
+        "action": "query", "titles": titles,
+        "prop": "extracts", "exintro": "1", "explaintext": "1", "format": "json",
+    })
+    req = urllib.request.Request(
+        f"https://en.wikipedia.org/w/api.php?{params}",
+        headers={"User-Agent": "Zophiel/SOLIA 1.0 (educational)"},
+    )
+    with urllib.request.urlopen(req, timeout=8) as resp:
+        data = json.loads(resp.read().decode())
+    candidates: list[tuple[float, str, str]] = []
+    for page in data.get("query", {}).get("pages", {}).values():
+        if int(page.get("pageid", -1)) < 0:
+            continue
+        title = page.get("title", "wikipedia")
+        extract = page.get("extract", "").strip()
+        if not extract:
+            continue
+        for sent in re.split(r"(?<=[.!?])\s+", extract)[:20]:
+            sent = sent.strip()
+            if len(sent) < 40:
                 continue
-            for sent in re.split(r"(?<=[.!?])\s+", extract)[:20]:
-                sent = sent.strip()
-                if len(sent) < 40:
-                    continue
-                sent_words = set(re.findall(r"[a-z]{3,}", sent.lower()))
-                overlap = len(query_words & sent_words) / max(1, len(query_words))
-                candidates.append((overlap, sent, title))
+            sent_words = set(re.findall(r"[a-z]{3,}", sent.lower()))
+            overlap = len(query_words & sent_words) / max(1, len(query_words))
+            candidates.append((overlap, sent, title))
+    candidates.sort(key=lambda x: -x[0])
+    return [{"text": s, "score": 0.85 + sc * 0.1, "source": f"wikipedia:{t}"}
+            for sc, s, t in candidates[:8]]
 
-        candidates.sort(key=lambda x: -x[0])
-        for score, sent, title in candidates[:8]:
-            hits.append({"text": sent, "score": 0.85 + score * 0.1,
-                          "source": f"wikipedia:{title}"})
+
+def _wikipedia_search(query: str) -> list[dict]:
+    """Direct subject lookup first; full-text search fallback."""
+    query_words = set(re.findall(r"[a-z]{3,}", query.lower()))
+    hits: list[dict] = []
+    try:
+        # 1. Direct title lookup — try each candidate subject until we get hits
+        for subject in _extract_subject(query):
+            if subject:
+                hits = _fetch_wiki_pages(subject, query_words)
+            if hits:
+                break
+
+        # 2. If direct lookup empty, fall back to full-text search
+        if not hits:
+            params = _urlparse.urlencode({
+                "action": "query", "list": "search",
+                "srsearch": query, "format": "json", "srlimit": 3,
+            })
+            req = urllib.request.Request(
+                f"https://en.wikipedia.org/w/api.php?{params}",
+                headers={"User-Agent": "Zophiel/SOLIA 1.0 (educational)"},
+            )
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = json.loads(resp.read().decode())
+            results = data.get("query", {}).get("search", [])
+            if results:
+                titles = "|".join(r["title"] for r in results)
+                hits = _fetch_wiki_pages(titles, query_words)
     except Exception as ex:
         print(f"[Zophiel] wikipedia_search error: {ex}")
     return hits
