@@ -453,6 +453,15 @@ def think(query: str, index: RagIndex) -> dict:
     if identity:
         return {"reply": identity, "method": "identity", "hits": 0}
 
+    # Code generation path
+    try:
+        from brain.code_engine import generate_code
+        code_reply = generate_code(q)
+        if code_reply:
+            return {"reply": code_reply, "method": "code_engine", "hits": 0}
+    except Exception:
+        pass
+
     # Asher decode
     asher = asher_decode(q)
 

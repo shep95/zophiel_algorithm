@@ -290,7 +290,16 @@ def ask():
     if fast:
         return jsonify({"reply": fast, "method": "fast_path"})
 
-    # 2. Cyber defence overlay
+    # 2. Code generation
+    try:
+        from brain.code_engine import generate_code
+        code_reply = generate_code(query)
+        if code_reply:
+            return jsonify({"reply": code_reply, "method": "code_engine"})
+    except Exception:
+        pass
+
+    # 3. Cyber defence overlay
     cyber = analyse_threat(query)
 
     # 3. Asher decode
