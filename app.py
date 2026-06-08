@@ -23,6 +23,12 @@ BASE = Path(__file__).resolve().parent
 DB   = os.environ.get("DB_PATH",        str(BASE / "data" / "aureon.db"))
 KNOW = os.environ.get("KNOWLEDGE_PATH", str(BASE / "data" / "corpus_knowledge.json"))
 RAG_MIN_CONFIDENCE = float(os.environ.get("RAG_CONFIDENCE", "0.35"))
+
+# API key auth — set ZOPHIEL_API_KEY env var on Railway to enable.
+# /health and / are always public (Railway healthcheck needs them).
+# If not set, the API is open (backwards-compatible with existing deploys).
+_API_KEY: str | None = os.environ.get("ZOPHIEL_API_KEY") or None
+
 sys.path.insert(0, str(BASE))
 
 from aureon_test_runner import RagIndex, fast_answer, asher_decode, synthesize, build_corpus
@@ -234,6 +240,26 @@ def _build_web_reply(query: str, web_hits: list, decode: str) -> str:
     return reply
 
 # ---------------------------------------------------------------------------
+# Auth guard
+# ---------------------------------------------------------------------------
+def _check_auth() -> bool:
+    """Return True if request is authorised.
+
+    Authorised when:
+      - ZOPHIEL_API_KEY is not set (open mode, backwards-compatible)
+      - Authorization: Bearer <key> header matches ZOPHIEL_API_KEY
+      - x-api-key: <key> header matches (alternative header for frontends)
+    """
+    if _API_KEY is None:
+        return True
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer ") and auth_header[7:] == _API_KEY:
+        return True
+    if request.headers.get("x-api-key", "") == _API_KEY:
+        return True
+    return False
+
+# ---------------------------------------------------------------------------
 # Flask routes
 # ---------------------------------------------------------------------------
 @app.route("/")
@@ -271,6 +297,9 @@ def health():
 
 @app.route("/ask", methods=["POST"])
 def ask():
+    if not _check_auth():
+        return jsonify({"error": "Unauthorized — provide Authorization: Bearer <key>"}), 401
+
     body  = request.get_json(force=True) or {}
     query = (body.get("query") or "").strip()
     if not query:

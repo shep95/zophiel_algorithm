@@ -17,9 +17,10 @@
 ![Python](https://img.shields.io/badge/Python-3.11+-00d4ff?style=for-the-badge&logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-REST_API-7c3aed?style=for-the-badge&logo=flask&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-29741_docs-00ff88?style=for-the-badge&logo=sqlite&logoColor=black)
-![Corpus](https://img.shields.io/badge/Corpus-54_domains-ff6b35?style=for-the-badge)
-![Modules](https://img.shields.io/badge/Brain_Modules-90+-ff2d55?style=for-the-badge)
+![Corpus](https://img.shields.io/badge/Corpus-55_domains-ff6b35?style=for-the-badge)
+![Code_Engine](https://img.shields.io/badge/Code_Engine-26_patterns-00d4ff?style=for-the-badge)
 ![Deploy](https://img.shields.io/badge/Deploy-Railway-0f0f0f?style=for-the-badge&logo=railway&logoColor=white)
+![Auth](https://img.shields.io/badge/Auth-API_Key_Bearer-ff2d55?style=for-the-badge)
 
 </div>
 
@@ -383,9 +384,80 @@ Zophiel/
 │       └── src/               ← Kyber1024, Dilithium5, Imperial stack
 │
 └── data/
-    ├── aureon.db              ← SQLite corpus (29,741 documents)
-    ├── corpus_knowledge.json  ← 54-domain knowledge base
+    ├── aureon.db              ← SQLite corpus (rebuilt fresh on each deploy)
+    ├── corpus_knowledge.json  ← 55-domain knowledge base (inc. Cybersecurity)
     └── aureon_full_dataset_repaired.json
+```
+
+---
+
+## ◈ What's New
+
+### v1.2.0 — June 2026
+
+| Feature | Detail |
+|---|---|
+| **API Key Auth** | `POST /ask` protected by `Authorization: Bearer <key>`. Set `ZOPHIEL_API_KEY` env var on Railway. `/health` and `/` remain public. |
+| **Live Internet Search** | Auto-triggers Wikipedia fallback when corpus confidence < 0.35. Google News RSS for current-events queries. No API key needed. |
+| **Code Generation Engine** | 26 verified patterns: data structures, sorting, search, graph, DP, strings, SQL, OOP, functional, async, security, concurrency. Every pattern has type hints, Big-O docs, and passing assert tests. |
+| **Opinion & Decision Mode** | Zophiel now forms a position when asked to decide. Trigger phrases like "you have to decide", "I need you to help me", "what's your take". Covers 12 ethical domains: death penalty, abortion, war, climate, wealth inequality, God, AI rights, lying, drugs, and more. |
+| **Ethical Reasoning** | 3-layer Asher decode applied to moral questions: Surface → Mechanism → Truth. Positions are data-driven and logically traced, not sentiment-based. |
+| **Railway Startup Fix** | Flask binds immediately on startup; corpus builds in background thread. Healthcheck passes in <1s instead of timing out. |
+| **Background Boot** | Corpus always rebuilt from JSON on deploy — no stale/malformed DB on Railway. |
+
+### Connecting Zophiel to Your Frontend (Aureon App)
+
+**Recommended scope: Option A — Chat-only fallback now, expand later.**
+
+Zophiel is a single-turn Q&A engine. It does not support streaming, multi-turn history, system prompts, vision, or JSON schema output. Route only simple chat queries to `/ask`. Leave Search, Briefings, Consensus, and Vision on your existing Gemini/BYOK path.
+
+```
+Frontend request:
+  POST https://zophielalgorithm-production.up.railway.app/ask
+  Authorization: Bearer <ZOPHIEL_API_KEY>
+  Content-Type: application/json
+  { "query": "your question here" }
+
+Response:
+  {
+    "reply": "...",
+    "method": "rag | fast_path | code_engine | web_fallback(wikipedia) | live_search",
+    "confidence": 0.87,
+    "web_hits": 0,
+    "asher": "..."
+  }
+```
+
+**Railway env var to set:**
+```
+ZOPHIEL_API_KEY=your-secret-key-here
+```
+
+**Frontend header to send:**
+```
+Authorization: Bearer your-secret-key-here
+```
+
+---
+
+### Pipeline Decision Tree
+
+```
+Query
+  |
+  +-- Math/constant? ──────────────────> fast_path (0ms)
+  |
+  +-- Coding request? ─────────────────> code_engine (26 patterns, 0ms)
+  |
+  +-- "You have to decide" / opinion? -> opinion_engine (12 ethical domains)
+  |
+  +-- Identity / self-reflection? ────> identity (sovereign Zophiel response)
+  |
+  +-- News / "today" / "2026"? ───────> Google News RSS (live headlines)
+  |
+  +-- Corpus confidence >= 0.35? ─────> TF-IDF RAG (55-domain corpus)
+  |
+  +-- Corpus confidence < 0.35? ──────> Wikipedia fallback (live web data)
 ```
 
 ---
