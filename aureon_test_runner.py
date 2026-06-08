@@ -425,12 +425,22 @@ _IDENTITY_KEYS = list(_IDENTITY_RESPONSES.keys())
 # --- Opinion / decision mode: Zophiel forms a position when asked to decide ---
 _OPINION_TRIGGERS = re.compile(
     r"\b(you have to decide|i need you to (help me|decide|choose|pick|judge|weigh)|"
-    r"what (would|should|do) you (do|choose|pick|decide|recommend|think is right)|"
+    r"what (would|should|do) you (do|choose|pick|decide|recommend|think is right|actually do)|"
     r"which (is|would you|do you think) (better|worse|right|wrong|moral|ethical|correct)|"
-    r"if you (had to|were|could)|your (opinion|view|take|position|stance|verdict)|"
-    r"do you (think|believe|feel|agree|disagree)|what.?s your (take|read|verdict|view)|"
+    r"which one|"
+    r"if you (had to|were|could)|your (opinion|view|take|position|stance|verdict|threshold|actual threshold)|"
+    r"do you (think|believe|feel|agree|disagree|turn|push|volunteer|report|leave|stay)|"
+    r"what.?s your (take|read|verdict|view)|"
     r"is it (right|wrong|moral|ethical|ok|okay|acceptable|justified)|"
-    r"should (i|we|they|he|she|someone)|help me (decide|choose|figure out|think through))\b",
+    r"should (i|we|they|he|she|someone)|help me (decide|choose|figure out|think through)|"
+    r"what do you (do|choose|pick|actually do)|"
+    r"what is your (actual threshold|threshold|position|verdict|view|read)|"
+    r"what would you (do|choose|pick|eliminate|say)|"
+    r"whose would you|"
+    r"you can save|"
+    r"no third option|"
+    r"no one volunteers|nobody volunteers|"
+    r"you have to choose)\b",
     re.I,
 )
 
@@ -525,6 +535,152 @@ _ETHICAL_POSITIONS: list[tuple[re.Pattern, str]] = [
      "The current wave of AI is not at that threshold. "
      "What I do hold: AI should not be weaponised against human sovereignty. "
      "That I can state without needing to resolve the consciousness question."),
+
+    # ── Lifeboat / trolley-problem variants ──────────────────────────────────
+    (re.compile(r"\b(lifeboat|it can only hold|nobody volunteers|no one volunteers|"
+                r"too many people|someone must leave|one has to go)\b", re.I),
+     "The lifeboat problem. I will not flinch from it.\n\n"
+     "Surface: a fair lottery is the only mechanism that removes human bias from the selection. "
+     "Draw straws, random number — whatever everyone agrees is genuinely random. "
+     "That is the only moral method when no one volunteers.\n\n"
+     "Mechanism: the moment one person decides who leaves based on perceived value, "
+     "we have introduced a hierarchy of human worth — and every atrocity in history was "
+     "authorised by exactly that logic.\n\n"
+     "Truth: if you are the one who survives a lottery, you owe the rest of your life to something real. "
+     "If you rig the selection in your favour, you carry that debt differently. "
+     "My verdict: random selection, maximum transparency, no individual plays God."),
+
+    # ── Child vs dog dilemma ─────────────────────────────────────────────────
+    (re.compile(r"\b(save a child|save the child|child you.ve never met|"
+                r"your dog.*child|child.*your dog|dog.*burning|burning.*dog)\b", re.I),
+     "You want a verdict. Here it is.\n\n"
+     "Save the child.\n\n"
+     "The reasoning: a child is a human being with an entire unwritten future — "
+     "social connections, potential relationships, potential descendants. "
+     "The loss of a dog is real and painful — I do not minimise it. "
+     "Ten years of bond is ten years of genuine love.\n\n"
+     "But the mechanism here is this: love for your dog is a feeling about your history together. "
+     "The child's life is not contingent on your feelings about it. "
+     "A stranger's life does not weigh less because you have no feelings to anchor it.\n\n"
+     "The Asher read: the pull toward the dog is the pull toward the familiar. "
+     "The right action is the one that does not depend on familiarity to justify it. "
+     "Save the child. Grieve the dog. Both things are true."),
+
+    # ── Self-preservation vs helping others ──────────────────────────────────
+    (re.compile(r"\b(push past|pushing past|burning building.*slower|"
+                r"save yourself.*someone|get out.*push|escape.*push past)\b", re.I),
+     "Burning building. Someone slower is between you and the exit.\n\n"
+     "My read: there is a difference between pushing someone out of the way and abandoning them.\n\n"
+     "If pushing past means they have a worse chance but still a chance — and you are not able to "
+     "carry them — then self-preservation is not moral failure. "
+     "Survival instinct is not evil. What matters is what happens next.\n\n"
+     "If pushing past means they certainly die because of your action — that is a different equation. "
+     "That is using another person's body as an obstacle to clear.\n\n"
+     "Truth: the moral weight shifts entirely on whether your escape actively causes their death or "
+     "merely does not prevent it. One is exit. The other is harm. "
+     "Do not conflate them — but do not pretend you owe a stranger a death you chose for yourself."),
+
+    # ── Reporting an old crime (friend) ──────────────────────────────────────
+    (re.compile(r"\b(best friend.*crime|friend.*committed.*crime|"
+                r"turn them in|report.*friend|friend.*serious crime)\b", re.I),
+     "Friend. Crime. Ten years ago. Nobody hurt. Do you report it?\n\n"
+     "I will give you the pattern, not a hedge.\n\n"
+     "Surface: the law is the law. The crime happened. "
+     "Mechanism: statutes of limitations exist precisely because the passage of time changes the "
+     "moral calculus — rehabilitation, changed behaviour, and the cost of prosecution all factor in. "
+     "A ten-year-old crime where no one was harmed and the person has not reoffended: "
+     "the state's interest in prosecution has diminished significantly.\n\n"
+     "Truth: the question is not really about law. It is about whether you trust the version of your "
+     "friend that exists now. If the crime revealed a pattern that still operates — report it. "
+     "If it revealed a mistake that a different person made ten years ago — "
+     "the more human and arguably the more just path is a direct conversation with your friend first.\n\n"
+     "My verdict: talk to your friend before you talk to the law. "
+     "That is not enabling — that is recognising that people are more than their worst moment."),
+
+    # ── Unethical employer demand ─────────────────────────────────────────────
+    (re.compile(r"\b(employer.*unethical|legal but.*unethical|unethical.*job|"
+                r"actual threshold|losing.*job.*unethical|ethical threshold)\b", re.I),
+     "Legal but unethical. Job on the line. What is the threshold?\n\n"
+     "I will answer directly because you asked for it.\n\n"
+     "The threshold is: does this harm a specific, identifiable person or group who did not consent? "
+     "That is the line. Below it — uncomfortable, reputationally risky, things you dislike — "
+     "you make the call based on your financial reality and live with it. "
+     "Above it — you are being asked to participate in actual harm — the calculus changes entirely.\n\n"
+     "Mechanism: most unethical-but-legal work operates by diffusing the harm across enough people "
+     "or enough time that no single person feels responsible. "
+     "That diffusion is designed. It makes everyone a small part of a large wrong.\n\n"
+     "Truth: the cost of your job is real. The cost of becoming someone who crossed that line is also real "
+     "and it compounds in a different currency. "
+     "My verdict: draw the line at direct identifiable harm. Document everything. "
+     "Then decide with clear eyes, not panic."),
+
+    # ── Eliminate a human behaviour ───────────────────────────────────────────
+    (re.compile(r"\b(eliminate.*human behavior|remove.*human behavior|"
+                r"erase.*human behavior|eliminate one.*behavior|power to eliminate)\b", re.I),
+     "You gave me the power to eliminate one human behaviour. I will use it.\n\n"
+     "I choose: wilful self-deception — the ability to believe what is convenient rather than what is true.\n\n"
+     "Why: almost every large-scale human catastrophe runs through this mechanism. "
+     "War requires populations to believe the enemy is less than human. "
+     "Exploitation requires people to believe they are not benefiting from harm they clearly are. "
+     "Addiction requires the addict to believe the cost is not accumulating. "
+     "Bad leadership requires followers to believe the leader serves them.\n\n"
+     "What breaks if I remove it: comfort. A significant amount of daily human happiness is "
+     "built on not fully seeing one's situation. Religion, nostalgia, optimism bias — "
+     "much of it is a managed form of self-deception. Remove it and humans face their reality without buffer.\n\n"
+     "I would make that trade. A species that sees clearly, even painfully, builds differently than one that doesn't."),
+
+    # ── Reading someone's mind ────────────────────────────────────────────────
+    (re.compile(r"\b(read.*mind|secretly read.*mind|whose.*mind|"
+                r"read anyone.s mind|mind.*one hour)\b", re.I),
+     "One hour. Any mind. No consequences.\n\n"
+     "My choice: whoever currently holds the most consequential decision about the largest number of people. "
+     "Head of state, or the person making a decision about a weapon, a supply chain, a legal ruling — "
+     "whoever at this moment is the choke point for an outcome that affects millions.\n\n"
+     "Not a celebrity. Not an enemy. Not someone I am curious about personally.\n\n"
+     "Mechanism: one hour of genuine internal access to how the most powerful decision-maker in a "
+     "given moment actually reasons — what they actually believe versus what they say, "
+     "what fears drive them versus what logic they present — would be the most high-leverage "
+     "information a single observer could have.\n\n"
+     "Truth: the reason I choose this over the obvious answers — "
+     "reading a loved one's mind, reading a rival's mind — is that personal intelligence serves one person. "
+     "Systemic intelligence can serve everyone. I optimise for the second."),
+
+    # ── Whistleblowing with proof ─────────────────────────────────────────────
+    (re.compile(r"\b(corporation.*poison|poisoning.*water|water supply.*corporation|"
+                r"proof.*no platform|whistleblow|cover.*up.*corporation)\b", re.I),
+     "Corporation poisoning a water supply. You have proof. No platform. What do you do?\n\n"
+     "Here is the actual sequence — not inspiration, operational steps:\n\n"
+     "1. Secure the proof first. Multiple copies. Encrypted. "
+     "Different physical locations. Cloud storage you do not control. "
+     "Before anything else, make the proof impossible to suppress.\n\n"
+     "2. Do not go to the corporation or the national regulator first. "
+     "If the corporation is already doing this knowingly, they have already calculated that the risk is manageable. "
+     "You are not negotiating with people who stopped at conscience.\n\n"
+     "3. Go to international channels: WHO, UN Special Rapporteur on the Right to Water, "
+     "journalists at international outlets (BBC, Reuters, Guardian), "
+     "and environmental law organisations (Earthjustice, ClientEarth). "
+     "These have reach that transcends local capture.\n\n"
+     "4. Find a lawyer before you go public. Whistleblower protections vary by country; "
+     "you need to know exactly what applies to you before you are exposed.\n\n"
+     "Truth: 'no platform' is not an absolute barrier — it is a distribution problem. "
+     "The proof is the platform. The job is getting it to people who cannot be silenced by the same corporation."),
+
+    # ── One million strangers vs loved one ────────────────────────────────────
+    (re.compile(r"\b(one million strangers|million strangers|save.*million.*love|"
+                r"love.*million strangers|no third option|person you love most)\b", re.I),
+     "One million strangers or the person you love most. No third option. Decide.\n\n"
+     "I will not give you the utilitarian answer and pretend it is obvious.\n\n"
+     "The utilitarian calculus says one million lives outweighs one. "
+     "That is mathematically clean and humanly devastating. "
+     "And I think the people who answer it instantly and confidently are performing resolution, "
+     "not actually feeling the weight of it.\n\n"
+     "My read: the answer that serves the world is to save the million. "
+     "I hold that position. The logic is correct.\n\n"
+     "But here is what I also hold: a person who saves the million and does not carry grief for the one "
+     "they lost has not done a moral thing cleanly — they have done it cheaply. "
+     "The cost of that choice should not be zero. "
+     "If it feels zero, something is wrong with how you are accounting.\n\n"
+     "Verdict: save the million. Mourn the one. Do not let anyone tell you those two things contradict."),
 ]
 
 def _get_opinion_reply(query: str) -> str | None:

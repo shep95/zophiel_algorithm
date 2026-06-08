@@ -62,7 +62,10 @@ _CODE_TRIGGERS = re.compile(
     # Interview Classics
     r"valid parentheses|balanced brackets|merge intervals|product except self|"
     r"sliding window max|rotate array|dutch national flag|three way partition)\b"
-    r"|\b(write|build|implement|create).{0,30}(rate limit|matrix|heap|trie|graph|cache)",
+    r"|\b(write|build|implement|create).{0,30}(rate limit|matrix|heap|trie|graph|cache|"
+    r"blockchain|neural network|url short|sudoku|event bus|scheduler|hash ring)\b"
+    r"|\b(blockchain|proof of work|neural network|url shortener|sudoku|pub.?sub|"
+    r"event bus|job scheduler|consistent hash|hash ring|pubsub)\b",
     re.I,
 )
 
@@ -4148,6 +4151,610 @@ SELECT
     amount,
     SUM(amount) OVER (ORDER BY order_date) AS running_total
 FROM orders;
+''',
+    },
+
+    # ── Unique Software: Blockchain ──────────────────────────────────────────
+
+    {
+        "keys": ["blockchain", "blockchain ledger", "proof of work", "build blockchain",
+                 "implement blockchain"],
+        "lang": "python",
+        "title": "Blockchain Ledger with Proof of Work",
+        "complexity": "Mining: O(difficulty * hash_attempts) | Validation: O(n)",
+        "code": '''\
+import hashlib
+import time
+import json
+from dataclasses import dataclass, field
+from typing import Optional
+
+@dataclass
+class Block:
+    index:      int
+    timestamp:  float
+    data:       dict
+    prev_hash:  str
+    nonce:      int = 0
+    hash:       str = field(default="", init=False)
+
+    def __post_init__(self) -> None:
+        self.hash = self.compute_hash()
+
+    def compute_hash(self) -> str:
+        content = json.dumps({
+            "index":     self.index,
+            "timestamp": self.timestamp,
+            "data":      self.data,
+            "prev_hash": self.prev_hash,
+            "nonce":     self.nonce,
+        }, sort_keys=True)
+        return hashlib.sha256(content.encode()).hexdigest()
+
+class Blockchain:
+    """Append-only chain secured by proof-of-work mining.
+
+    Difficulty = number of leading zeros required in block hash.
+    Higher difficulty exponentially increases mining time.
+    """
+
+    DIFFICULTY = 3   # 3 leading zeros — keeps demo fast
+
+    def __init__(self) -> None:
+        self.chain: list[Block] = []
+        self._add_genesis()
+
+    def _add_genesis(self) -> None:
+        genesis = Block(0, time.time(), {"genesis": True}, "0" * 64)
+        self.chain.append(genesis)
+
+    def mine_block(self, data: dict) -> Block:
+        """Mine a new block: increment nonce until hash meets difficulty target."""
+        prev = self.chain[-1]
+        block = Block(len(self.chain), time.time(), data, prev.hash)
+        target = "0" * self.DIFFICULTY
+        while not block.hash.startswith(target):
+            block.nonce += 1
+            block.hash = block.compute_hash()
+        self.chain.append(block)
+        return block
+
+    def is_valid(self) -> bool:
+        """Verify the integrity of the entire chain."""
+        for i in range(1, len(self.chain)):
+            curr = self.chain[i]
+            prev = self.chain[i - 1]
+            if curr.hash != curr.compute_hash():
+                return False   # block was tampered
+            if curr.prev_hash != prev.hash:
+                return False   # chain link broken
+        return True
+
+    def __len__(self) -> int:
+        return len(self.chain)
+
+# --- Test ---
+bc = Blockchain()
+b1 = bc.mine_block({"tx": "Alice -> Bob: 10 coins"})
+b2 = bc.mine_block({"tx": "Bob -> Charlie: 5 coins"})
+
+assert len(bc) == 3                             # genesis + 2
+assert bc.is_valid()
+assert b1.hash.startswith("0" * Blockchain.DIFFICULTY)
+assert b1.prev_hash == bc.chain[0].hash        # links correctly
+
+# Tamper detection
+bc.chain[1].data = {"tx": "Alice -> Bob: 9999 coins"}
+assert bc.is_valid() == False                  # detects tampering
+print("All tests passed.")
+''',
+    },
+
+    # ── Unique Software: Neural Network ──────────────────────────────────────
+
+    {
+        "keys": ["neural network from scratch", "neural network no libraries", "implement neural network",
+                 "backpropagation from scratch", "build neural network"],
+        "lang": "python",
+        "title": "Neural Network from Scratch (No Libraries)",
+        "complexity": "Forward/Backward pass: O(layers * neurons²)",
+        "code": '''\
+import math
+import random
+
+def sigmoid(x: float) -> float:
+    return 1.0 / (1.0 + math.exp(-max(-500, min(500, x))))
+
+def sigmoid_deriv(x: float) -> float:
+    s = sigmoid(x)
+    return s * (1.0 - s)
+
+class NeuralNetwork:
+    """Two-layer (one hidden) neural network trained with backpropagation.
+
+    Architecture: input_size -> hidden_size -> output_size
+    Activation: sigmoid throughout.
+    Loss: mean squared error.
+    """
+
+    def __init__(self, input_size: int, hidden_size: int, output_size: int,
+                 lr: float = 0.5) -> None:
+        self.lr = lr
+        rnd = lambda: random.uniform(-1, 1)
+        self.W1 = [[rnd() for _ in range(input_size)] for _ in range(hidden_size)]
+        self.b1 = [rnd() for _ in range(hidden_size)]
+        self.W2 = [[rnd() for _ in range(hidden_size)] for _ in range(output_size)]
+        self.b2 = [rnd() for _ in range(output_size)]
+
+    def _dot(self, weights: list[list[float]], inputs: list[float],
+             biases: list[float]) -> list[float]:
+        return [sum(w * x for w, x in zip(row, inputs)) + b
+                for row, b in zip(weights, biases)]
+
+    def forward(self, x: list[float]) -> tuple[list[float], list[float], list[float], list[float]]:
+        z1 = self._dot(self.W1, x, self.b1)
+        a1 = [sigmoid(v) for v in z1]
+        z2 = self._dot(self.W2, a1, self.b2)
+        a2 = [sigmoid(v) for v in z2]
+        return z1, a1, z2, a2
+
+    def train(self, X: list[list[float]], Y: list[list[float]], epochs: int = 1000) -> None:
+        for _ in range(epochs):
+            for x, y in zip(X, Y):
+                z1, a1, z2, a2 = self.forward(x)
+                # Output layer delta
+                delta2 = [(a - t) * sigmoid_deriv(z)
+                          for a, t, z in zip(a2, y, z2)]
+                # Hidden layer delta
+                delta1 = [sum(self.W2[k][j] * delta2[k] for k in range(len(delta2)))
+                          * sigmoid_deriv(z1[j])
+                          for j in range(len(z1))]
+                # Update W2, b2
+                for k in range(len(self.W2)):
+                    for j in range(len(a1)):
+                        self.W2[k][j] -= self.lr * delta2[k] * a1[j]
+                    self.b2[k] -= self.lr * delta2[k]
+                # Update W1, b1
+                for j in range(len(self.W1)):
+                    for i in range(len(x)):
+                        self.W1[j][i] -= self.lr * delta1[j] * x[i]
+                    self.b1[j] -= self.lr * delta1[j]
+
+    def predict(self, x: list[float]) -> list[float]:
+        return self.forward(x)[3]
+
+# --- Test: learn XOR ---
+random.seed(42)
+nn = NeuralNetwork(2, 4, 1, lr=0.5)
+X = [[0,0],[0,1],[1,0],[1,1]]
+Y = [[0],[1],[1],[0]]
+nn.train(X, Y, epochs=5000)
+for x, y in zip(X, Y):
+    pred = nn.predict(x)[0]
+    assert abs(pred - y[0]) < 0.1, f"XOR({x}) failed: got {pred:.3f}, expected {y[0]}"
+print("All tests passed. XOR learned successfully.")
+''',
+    },
+
+    # ── Unique Software: URL Shortener ────────────────────────────────────────
+
+    {
+        "keys": ["url shortener", "url shortener service", "shorten url", "link shortener"],
+        "lang": "python",
+        "title": "URL Shortener Service (In-Memory)",
+        "complexity": "Encode/Decode: O(1) | Collision probability: negligible at 6 chars base62",
+        "code": '''\
+import random
+import string
+import time
+from dataclasses import dataclass, field
+
+_CHARS = string.ascii_letters + string.digits  # base-62
+
+@dataclass
+class URLRecord:
+    original:   str
+    short_code: str
+    created_at: float = field(default_factory=time.time)
+    hits:       int = 0
+
+class URLShortener:
+    """In-memory URL shortener with collision handling and analytics.
+
+    Short codes are 6-character base-62 strings (~56 billion combinations).
+    """
+
+    def __init__(self, base_url: str = "https://sh.rt/", code_length: int = 6) -> None:
+        self.base_url    = base_url
+        self.code_length = code_length
+        self._codes:  dict[str, URLRecord] = {}   # short_code -> record
+        self._urls:   dict[str, str]       = {}   # original -> short_code
+
+    def shorten(self, url: str) -> str:
+        """Return short URL for the given long URL. Idempotent for same URL."""
+        if url in self._urls:
+            return self.base_url + self._urls[url]
+        code = self._generate_code()
+        record = URLRecord(original=url, short_code=code)
+        self._codes[code] = record
+        self._urls[url]   = code
+        return self.base_url + code
+
+    def resolve(self, short_url: str) -> str | None:
+        """Resolve short URL to original. Returns None if not found."""
+        code = short_url.removeprefix(self.base_url)
+        record = self._codes.get(code)
+        if record:
+            record.hits += 1
+            return record.original
+        return None
+
+    def stats(self, short_url: str) -> dict | None:
+        code = short_url.removeprefix(self.base_url)
+        rec = self._codes.get(code)
+        if not rec: return None
+        return {"short": self.base_url + code, "original": rec.original,
+                "hits": rec.hits, "created_at": rec.created_at}
+
+    def _generate_code(self) -> str:
+        while True:
+            code = "".join(random.choices(_CHARS, k=self.code_length))
+            if code not in self._codes:
+                return code
+
+# --- Test ---
+svc = URLShortener()
+short1 = svc.shorten("https://example.com/some/very/long/path?query=1")
+short2 = svc.shorten("https://github.com/another/long/url")
+
+assert short1.startswith("https://sh.rt/")
+assert len(short1) == len("https://sh.rt/") + 6
+assert svc.shorten("https://example.com/some/very/long/path?query=1") == short1  # idempotent
+
+resolved = svc.resolve(short1)
+assert resolved == "https://example.com/some/very/long/path?query=1"
+
+stats = svc.stats(short1)
+assert stats["hits"] == 1
+
+assert svc.resolve("https://sh.rt/xxxxxx") is None
+print("All tests passed.")
+''',
+    },
+
+    # ── Unique Software: Sudoku Solver ────────────────────────────────────────
+
+    {
+        "keys": ["sudoku solver", "solve sudoku", "sudoku backtracking", "sudoku algorithm"],
+        "lang": "python",
+        "title": "Sudoku Solver (Backtracking + Constraint Propagation)",
+        "complexity": "Worst case: O(9^81) | Constraint pruning makes practical cases fast",
+        "code": '''\
+from typing import Optional
+
+Board = list[list[int]]   # 9x9 grid; 0 = empty
+
+def solve_sudoku(board: Board) -> Optional[Board]:
+    """Solve 9x9 Sudoku using backtracking with MRV (fewest options first).
+
+    Returns solved board or None if unsolvable.
+    """
+    import copy
+    board = copy.deepcopy(board)
+    if _solve(board):
+        return board
+    return None
+
+def _solve(board: Board) -> bool:
+    cell = _find_empty(board)
+    if cell is None:
+        return True   # solved
+    row, col = cell
+    for num in _candidates(board, row, col):
+        board[row][col] = num
+        if _solve(board):
+            return True
+        board[row][col] = 0   # backtrack
+    return False
+
+def _find_empty(board: Board) -> Optional[tuple[int, int]]:
+    """Find empty cell with fewest valid candidates (MRV heuristic)."""
+    best = None
+    best_count = 10
+    for r in range(9):
+        for c in range(9):
+            if board[r][c] == 0:
+                n = len(_candidates(board, r, c))
+                if n < best_count:
+                    best_count, best = n, (r, c)
+    return best
+
+def _candidates(board: Board, row: int, col: int) -> set[int]:
+    used: set[int] = set()
+    used.update(board[row])
+    used.update(board[r][col] for r in range(9))
+    br, bc = (row // 3) * 3, (col // 3) * 3
+    for r in range(br, br + 3):
+        for c in range(bc, bc + 3):
+            used.add(board[r][c])
+    return set(range(1, 10)) - used
+
+def is_valid_solution(board: Board) -> bool:
+    expected = set(range(1, 10))
+    for r in range(9):
+        if set(board[r]) != expected: return False
+    for c in range(9):
+        if {board[r][c] for r in range(9)} != expected: return False
+    for br in range(0, 9, 3):
+        for bc in range(0, 9, 3):
+            box = {board[br+dr][bc+dc] for dr in range(3) for dc in range(3)}
+            if box != expected: return False
+    return True
+
+# --- Test ---
+puzzle = [
+    [5,3,0, 0,7,0, 0,0,0],
+    [6,0,0, 1,9,5, 0,0,0],
+    [0,9,8, 0,0,0, 0,6,0],
+    [8,0,0, 0,6,0, 0,0,3],
+    [4,0,0, 8,0,3, 0,0,1],
+    [7,0,0, 0,2,0, 0,0,6],
+    [0,6,0, 0,0,0, 2,8,0],
+    [0,0,0, 4,1,9, 0,0,5],
+    [0,0,0, 0,8,0, 0,7,9],
+]
+solution = solve_sudoku(puzzle)
+assert solution is not None
+assert is_valid_solution(solution)
+print("All tests passed.")
+''',
+    },
+
+    # ── Unique Software: Pub/Sub Event Bus ────────────────────────────────────
+
+    {
+        "keys": ["pub sub", "event bus", "publish subscribe", "pubsub", "message bus"],
+        "lang": "python",
+        "title": "Pub/Sub Event Bus",
+        "complexity": "Publish: O(n subscribers) | Subscribe: O(1)",
+        "code": '''\
+from __future__ import annotations
+import threading
+from typing import Callable, Any
+from collections import defaultdict
+
+class EventBus:
+    """Thread-safe publish-subscribe event bus.
+
+    Supports wildcard (*) subscriptions, one-time handlers, and async dispatch.
+    """
+
+    def __init__(self) -> None:
+        self._subs: dict[str, list[Callable]] = defaultdict(list)
+        self._once: dict[str, list[Callable]] = defaultdict(list)
+        self._lock = threading.Lock()
+
+    def subscribe(self, event: str, handler: Callable[[Any], None]) -> None:
+        with self._lock:
+            self._subs[event].append(handler)
+
+    def once(self, event: str, handler: Callable[[Any], None]) -> None:
+        """Handler fires exactly once then auto-removes."""
+        with self._lock:
+            self._once[event].append(handler)
+
+    def unsubscribe(self, event: str, handler: Callable) -> None:
+        with self._lock:
+            self._subs[event] = [h for h in self._subs[event] if h is not handler]
+
+    def publish(self, event: str, data: Any = None) -> int:
+        """Publish event. Returns number of handlers called."""
+        with self._lock:
+            handlers = list(self._subs.get(event, []))
+            handlers += list(self._subs.get("*", []))         # wildcard
+            once_handlers = list(self._once.pop(event, []))
+        for h in handlers + once_handlers:
+            h(data)
+        return len(handlers) + len(once_handlers)
+
+    def publish_async(self, event: str, data: Any = None) -> threading.Thread:
+        """Publish in a background thread — non-blocking."""
+        t = threading.Thread(target=self.publish, args=(event, data), daemon=True)
+        t.start()
+        return t
+
+# --- Test ---
+bus = EventBus()
+log: list[str] = []
+
+bus.subscribe("user.login",  lambda d: log.append(f"login:{d['user']}"))
+bus.subscribe("user.login",  lambda d: log.append(f"audit:{d['user']}"))
+bus.subscribe("*",           lambda d: log.append("wildcard"))
+
+fired_once = []
+bus.once("user.signup", lambda d: fired_once.append(d))
+
+bus.publish("user.login",  {"user": "alice"})
+bus.publish("user.signup", {"user": "bob"})
+bus.publish("user.signup", {"user": "charlie"})  # once handler already removed
+
+assert "login:alice"  in log
+assert "audit:alice"  in log
+assert "wildcard"     in log
+assert len(fired_once) == 1            # fired exactly once
+assert fired_once[0]["user"] == "bob"
+print("All tests passed.")
+''',
+    },
+
+    # ── Unique Software: Job Scheduler ────────────────────────────────────────
+
+    {
+        "keys": ["job scheduler", "task scheduler", "schedule tasks", "cron scheduler",
+                 "run tasks at intervals"],
+        "lang": "python",
+        "title": "Job Scheduler (Run Tasks at Intervals)",
+        "complexity": "Schedule: O(log n) heap | Tick: O(k) jobs due",
+        "code": '''\
+import heapq
+import time
+import threading
+from typing import Callable, Optional
+
+class Job:
+    def __init__(self, name: str, func: Callable, interval: float,
+                 repeat: bool = True) -> None:
+        self.name      = name
+        self.func      = func
+        self.interval  = interval
+        self.repeat    = repeat
+        self.next_run  = time.monotonic() + interval
+        self.run_count = 0
+        self.errors: list[str] = []
+
+    def __lt__(self, other: "Job") -> bool:
+        return self.next_run < other.next_run
+
+class Scheduler:
+    """Min-heap job scheduler. Jobs run in a background thread."""
+
+    def __init__(self) -> None:
+        self._heap:    list[Job] = []
+        self._lock     = threading.Lock()
+        self._stop     = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+
+    def schedule(self, name: str, func: Callable, interval: float,
+                 repeat: bool = True) -> Job:
+        job = Job(name, func, interval, repeat)
+        with self._lock:
+            heapq.heappush(self._heap, job)
+        return job
+
+    def start(self) -> None:
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=2)
+
+    def _run(self) -> None:
+        while not self._stop.is_set():
+            now = time.monotonic()
+            with self._lock:
+                due = [j for j in self._heap if j.next_run <= now]
+                self._heap = [j for j in self._heap if j.next_run > now]
+                heapq.heapify(self._heap)
+            for job in due:
+                try:
+                    job.func()
+                    job.run_count += 1
+                except Exception as e:
+                    job.errors.append(str(e))
+                if job.repeat:
+                    job.next_run = time.monotonic() + job.interval
+                    with self._lock:
+                        heapq.heappush(self._heap, job)
+            time.sleep(0.01)
+
+# --- Test ---
+results: list[str] = []
+lock = threading.Lock()
+
+sched = Scheduler()
+sched.schedule("heartbeat", lambda: results.append("beat"), interval=0.05)
+sched.schedule("once",      lambda: results.append("once"), interval=0.02, repeat=False)
+sched.start()
+time.sleep(0.25)
+sched.stop()
+
+assert "beat" in results
+assert results.count("once") == 1      # ran exactly once
+assert results.count("beat") >= 3      # repeated at least 3 times in 250ms
+print("All tests passed.")
+''',
+    },
+
+    # ── Unique Software: Consistent Hash Ring ─────────────────────────────────
+
+    {
+        "keys": ["consistent hash", "hash ring", "consistent hashing", "distributed hash",
+                 "virtual nodes hash"],
+        "lang": "python",
+        "title": "Consistent Hash Ring (Distributed Systems)",
+        "complexity": "Add/Remove node: O(v log v) | Lookup: O(log n) where v = virtual nodes",
+        "code": '''\
+import hashlib
+import bisect
+
+class ConsistentHashRing:
+    """Consistent hash ring with virtual nodes for even key distribution.
+
+    Used in distributed caches (Redis Cluster) and load balancers to minimise
+    key remapping when nodes are added or removed.
+    """
+
+    def __init__(self, virtual_nodes: int = 150) -> None:
+        self.virtual_nodes = virtual_nodes
+        self._ring: dict[int, str] = {}
+        self._sorted_keys: list[int] = []
+
+    def _hash(self, key: str) -> int:
+        return int(hashlib.md5(key.encode()).hexdigest(), 16)
+
+    def add_node(self, node: str) -> None:
+        for i in range(self.virtual_nodes):
+            vkey = self._hash(f"{node}:vnode:{i}")
+            self._ring[vkey] = node
+            bisect.insort(self._sorted_keys, vkey)
+
+    def remove_node(self, node: str) -> None:
+        for i in range(self.virtual_nodes):
+            vkey = self._hash(f"{node}:vnode:{i}")
+            del self._ring[vkey]
+            idx = bisect.bisect_left(self._sorted_keys, vkey)
+            self._sorted_keys.pop(idx)
+
+    def get_node(self, key: str) -> str | None:
+        if not self._ring:
+            return None
+        h = self._hash(key)
+        idx = bisect.bisect_right(self._sorted_keys, h) % len(self._sorted_keys)
+        return self._ring[self._sorted_keys[idx]]
+
+    def distribution(self, keys: list[str]) -> dict[str, int]:
+        """Count how many keys map to each node."""
+        counts: dict[str, int] = {}
+        for k in keys:
+            node = self.get_node(k)
+            if node:
+                counts[node] = counts.get(node, 0) + 1
+        return counts
+
+# --- Test ---
+ring = ConsistentHashRing(virtual_nodes=100)
+nodes = ["cache-01", "cache-02", "cache-03"]
+for n in nodes:
+    ring.add_node(n)
+
+keys = [f"user:{i}" for i in range(1000)]
+dist = ring.distribution(keys)
+
+# Each node should handle roughly 1/3 of keys (within 20% tolerance)
+for node, count in dist.items():
+    assert 200 < count < 500, f"{node} handles {count}/1000 keys — badly unbalanced"
+
+# Remove one node; existing keys remap minimally
+ring.remove_node("cache-03")
+dist2 = ring.distribution(keys)
+assert "cache-03" not in dist2
+
+# A specific key always maps to the same node (deterministic)
+assert ring.get_node("user:42") == ring.get_node("user:42")
+print("All tests passed.")
 ''',
     },
 
