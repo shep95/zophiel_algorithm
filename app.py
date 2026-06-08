@@ -27,7 +27,7 @@ from cyber_defence import analyse_threat
 
 print(f"[Zophiel] Loading corpus from {DB} ...")
 INDEX = RagIndex(DB)
-print(f"[Zophiel] Ready — {len(INDEX.docs)} documents")
+print(f"[Zophiel] Ready — {len(INDEX._docs)} documents")
 
 app = Flask(__name__)
 
