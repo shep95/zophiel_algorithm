@@ -15,9 +15,12 @@ Startup: Flask binds immediately; corpus is built in a background thread
 so the Railway healthcheck passes within seconds.
 """
 
-import os, sys, json, sqlite3, re, threading
+import os, sys, json, sqlite3, re, threading, hmac
 from pathlib import Path
 from flask import Flask, request, jsonify
+
+# Maximum accepted request body (bytes). Caps memory use from a hostile client.
+MAX_BODY_BYTES = int(os.environ.get("ZOPHIEL_MAX_BODY", str(64 * 1024)))
 
 BASE = Path(__file__).resolve().parent
 DB   = os.environ.get("DB_PATH",        str(BASE / "data" / "aureon.db"))
@@ -35,6 +38,18 @@ from aureon_test_runner import RagIndex, fast_answer, asher_decode, synthesize, 
 from cyber_defence import analyse_threat
 
 app = Flask(__name__)
+# Reject oversized bodies before they are read into memory (innate-immunity barrier).
+app.config["MAX_CONTENT_LENGTH"] = MAX_BODY_BYTES
+
+# Wire the Sovereign Organism (immune system) into the live request path.
+# Per-client throttling = innate immunity; audit chain = adaptive memory.
+try:
+    from brain.mind.nomad_security import get_stack, validate_request as _organism_gate
+    _ORGANISM = get_stack()
+except Exception as _e:  # never let the security layer crash the API outright
+    print(f"[Zophiel] organism init warning: {_e}")
+    _ORGANISM = None
+    _organism_gate = None
 
 # ---------------------------------------------------------------------------
 # Global state — populated by background loader
@@ -252,10 +267,12 @@ def _check_auth() -> bool:
     """
     if _API_KEY is None:
         return True
+    # hmac.compare_digest is constant-time — defeats the timing side-channel that
+    # plain "==" leaks (an attacker can otherwise brute-force the key byte by byte).
     auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer ") and auth_header[7:] == _API_KEY:
+    if auth_header.startswith("Bearer ") and hmac.compare_digest(auth_header[7:], _API_KEY):
         return True
-    if request.headers.get("x-api-key", "") == _API_KEY:
+    if hmac.compare_digest(request.headers.get("x-api-key", ""), _API_KEY):
         return True
     return False
 
@@ -300,7 +317,16 @@ def ask():
     if not _check_auth():
         return jsonify({"error": "Unauthorized — provide Authorization: Bearer <key>"}), 401
 
-    body  = request.get_json(force=True) or {}
+    # Organism gate: innate-immunity throttle + tamper-evident audit memory.
+    if _ORGANISM is not None and _organism_gate is not None:
+        client_id = (request.headers.get("x-forwarded-for", "")
+                     or request.remote_addr or "anonymous").split(",")[0].strip()
+        allowed, reason = _organism_gate(_ORGANISM, "POST", "/v1/query", client_id=client_id)
+        if not allowed:
+            status = 429 if "rate_limit" in reason else 503 if reason == "organism_lockdown" else 403
+            return jsonify({"error": reason}), status
+
+    body  = request.get_json(force=True, silent=True) or {}
     query = (body.get("query") or "").strip()
     if not query:
         return jsonify({"error": "query field required"}), 400

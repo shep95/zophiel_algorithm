@@ -245,16 +245,28 @@ def analyse_threat(query: str) -> Optional[str]:
     """
     Entry point for the SOLIA think() pipeline.
     Returns a cyber-defence synthesis string, or None if not cyber-related.
+
+    Only surfaces a defence overlay for GENUINE security questions — a single
+    incidental keyword ("log", "token", "quantum", "pattern") is not enough.
+    This prevents the STRIDE/Kyber overlay from polluting unrelated answers.
     """
     result = classify(query)
     if not result.is_cyber:
+        return None
+    # Require real security intent: a STRIDE category, a meaningful threat level,
+    # or at least two distinct Nomad components matched. Otherwise stay quiet.
+    strong = (
+        result.stride_category is not None
+        or result.threat_level in ("medium", "high", "critical")
+        or len(set(result.nomad_components) - {"general"}) >= 2
+    )
+    if not strong:
         return None
     return result.defence_response
 
 
 def full_analysis(query: str) -> dict:
     """Full structured analysis — used in tests and the audit pipeline."""
-    result = classify(query)
     result = classify(query)
     return {
         "is_cyber": result.is_cyber,

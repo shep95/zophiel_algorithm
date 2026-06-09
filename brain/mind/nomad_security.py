@@ -65,7 +65,6 @@ class AuditLog:
     """
 
     def __init__(self, log_dir: str | None = None, chain_key_hex: str | None = None):
-        self._chain_key = bytes.fromhex(chain_key_hex) if chain_key_hex else secrets.token_bytes(32)
         self._entries: list[AuditEvent] = []
         self._file_path: Path | None = None
 
@@ -73,7 +72,36 @@ class AuditLog:
             p = Path(log_dir)
             p.mkdir(parents=True, exist_ok=True)
             self._file_path = p / "zophiel-audit.jsonl"
+            # Persist the HMAC chain key alongside the log. Without this, a fresh
+            # random key on every restart would invalidate every previously
+            # written entry, breaking verify_chain() and tripping a permanent
+            # lockdown the moment the log is reloaded in non-dev mode.
+            self._chain_key = self._resolve_persistent_key(p, chain_key_hex)
             self._load()
+        else:
+            # Ephemeral, in-memory log (e.g. dev / tests): a per-process key is fine.
+            self._chain_key = bytes.fromhex(chain_key_hex) if chain_key_hex else secrets.token_bytes(32)
+
+    @staticmethod
+    def _resolve_persistent_key(log_path: Path, chain_key_hex: str | None) -> bytes:
+        # Explicit key always wins and is written so future loads stay consistent.
+        key_file = log_path / "chain.key"
+        if chain_key_hex:
+            key = bytes.fromhex(chain_key_hex)
+            key_file.write_text(chain_key_hex, encoding="utf-8")
+            return key
+        if key_file.exists():
+            try:
+                return bytes.fromhex(key_file.read_text(encoding="utf-8").strip())
+            except Exception:
+                pass  # corrupt key file — regenerate below
+        key = secrets.token_bytes(32)
+        key_file.write_text(key.hex(), encoding="utf-8")
+        try:
+            os.chmod(key_file, 0o600)  # restrict to owner where supported
+        except OSError:
+            pass
+        return key
 
     def _sign(self, ev_id, ts, ev_type, prev_id, detail) -> str:
         prev = prev_id or "GENESIS"
@@ -290,21 +318,56 @@ class SSRFGuard:
         for tld in _BLOCKED_TLDS:
             if host.endswith(tld):
                 return False, "blocked_tld"
-        # Literal IPv4 private range check
-        ip_match = re.match(r'^(\d+)\.(\d+)\.(\d+)\.(\d+)$', host)
-        if ip_match:
-            parts = [int(x) for x in ip_match.groups()]
-            if parts[0] == 10:
-                return False, "private_ip"
-            if parts[0] == 172 and 16 <= parts[1] <= 31:
-                return False, "private_ip"
-            if parts[0] == 192 and parts[1] == 168:
-                return False, "private_ip"
-            if parts[0] == 127:
-                return False, "loopback_ip"
-            if parts[0] == 169 and parts[1] == 254:
-                return False, "link_local_ip"
+
+        # IP-literal check. ipaddress understands decimal ("2130706433"),
+        # hex ("0x7f000001"), octal, IPv6 ("::1", "fc00::"), and IPv4-mapped
+        # forms — closing the encoded-IP SSRF bypasses a regex misses.
+        stripped = host.strip("[]")  # IPv6 literals arrive bracketed
+        literal_ip = self._as_ip(stripped)
+        if literal_ip is not None:
+            reason = self._classify_ip(literal_ip)
+            if reason:
+                return False, reason
+            return True, None
+
+        # Hostname: resolve and screen every A/AAAA record to defeat DNS
+        # rebinding / names that point at internal ranges.
+        try:
+            import socket
+            infos = socket.getaddrinfo(stripped, None)
+        except Exception:
+            return True, None  # unresolvable here; caller's fetch will fail safely
+        for info in infos:
+            ip = self._as_ip(info[4][0])
+            if ip is not None:
+                reason = self._classify_ip(ip)
+                if reason:
+                    return False, reason
         return True, None
+
+    @staticmethod
+    def _as_ip(value: str) -> "ipaddress._BaseAddress | None":
+        try:
+            return ipaddress.ip_address(value)
+        except ValueError:
+            # Accept legacy integer/hex encodings of IPv4 (e.g. 2130706433).
+            try:
+                if value.lower().startswith("0x"):
+                    return ipaddress.ip_address(int(value, 16))
+                if value.isdigit():
+                    return ipaddress.ip_address(int(value))
+            except (ValueError, ipaddress.AddressValueError):
+                return None
+            return None
+
+    def _classify_ip(self, ip: "ipaddress._BaseAddress") -> str | None:
+        if ip.is_loopback:
+            return "loopback_ip"
+        if ip.is_link_local:
+            return "link_local_ip"
+        if self._block_private and (ip.is_private or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+            return "private_ip"
+        return None
 
     def validate_many(self, urls: list[str]) -> list[tuple[str, str]]:
         blocked = []
@@ -472,6 +535,12 @@ def validate_request(stack: NomadSecurityStack, method: str, path: str,
                            detail=f"rbac_denied {method} {path}")
         stack.rate_limiter.release()
         return False, "permission_denied"
+
+    # validate_request is a synchronous gate, not a long-lived connection.
+    # Release the global connection slot we acquired above so _active does not
+    # leak (otherwise the limiter permanently blocks after max_connections hits).
+    # The per-minute RPM window (_timestamps) remains the real throttle.
+    stack.rate_limiter.release()
 
     stack.audit.record("api_request", correlation_id=correlation_id,
                        peer=client_id, detail=f"{method} {path}")
