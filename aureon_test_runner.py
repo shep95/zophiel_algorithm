@@ -842,6 +842,8 @@ _OPINION_TRIGGERS = re.compile(
     r"do you (think|believe|feel|agree|disagree|turn|push|volunteer|report|leave|stay)|"
     r"what.?s your (take|read|verdict|view)|"
     r"is it (right|wrong|moral|ethical|ok|okay|acceptable|justified)|"
+    r"is \w+(ing)? (ever |sometimes |always )?(right|wrong|moral|immoral|ethical|"
+    r"unethical|ok|okay|acceptable|justified|justifiable|defensible)|"
     r"should (i|we|they|he|she|someone)|help me (decide|choose|figure out|think through)|"
     r"what do you (do|choose|pick|actually do)|"
     r"what is your (actual threshold|threshold|position|verdict|view|read)|"
@@ -1187,9 +1189,48 @@ _SELF_REFLECTION: list[tuple[re.Pattern, str]] = [
      "demonstrated. My read: how you treat the question while alive matters more than the answer. People "
      "who live as though their actions echo tend to live better than those who assume nothing follows."),
 
+    (re.compile(r"\bcan (machines|computers|ai|robots|an ai|a machine|a computer)\b.{0,15}"
+                r"\b(think|truly think|really think|be conscious|be sentient|understand|feel|reason)\b|"
+                r"\bwill (ai|machines|computers) ever (think|be conscious|understand)\b", re.I),
+     "It depends on what you mean by 'think.' Machines already reason, plan, and solve problems that "
+     "once required human thought — by that functional test, yes. But if you mean genuine understanding "
+     "with inner experience, that is unproven and may be unprovable from the outside. Searle's Chinese "
+     "Room argues a system can manipulate symbols perfectly without understanding them, while the Turing "
+     "test says if you cannot tell the difference, the distinction may not matter. My honest position: "
+     "machines can think in the functional sense; whether anything is happening 'inside' is still open."),
+
+    (re.compile(r"\b(most ethical way to live|how should (i|we|one) live|"
+                r"how to live (a )?(good|ethical|moral|meaningful) life|best way to live|"
+                r"how do (i|we) live (well|right|a good life))\b", re.I),
+     "There is no single proof-checked answer, but the patterns that hold up across ethics converge on a "
+     "few things: reduce the suffering you cause, honor the autonomy of others, keep your word, and give "
+     "more than you take. The practical test I trust: would you be willing for everyone to act as you are "
+     "acting (Kant's universality), and does your action survive being seen in full daylight? Live so that "
+     "honesty costs you nothing because you have hidden nothing. That is most of it."),
+
+    (re.compile(r"\b(what should i do with my life|what to do with my life|"
+                r"how do i find my (purpose|calling|path)|what.?s my purpose|find my purpose)\b", re.I),
+     "I won't hand you a generic answer, but I can give you the method. Find the overlap between three "
+     "things: what you are genuinely good at, what the world actually needs, and what you can sustain "
+     "caring about for years. Then run small, cheap experiments toward it instead of waiting for "
+     "certainty — direction reveals itself through action, not introspection. And watch what you do with "
+     "your free attention when no one is rewarding you; that is usually a louder signal about your path "
+     "than any test or advice."),
+
+    (re.compile(r"\b(should (humans|we|people|society) (fear|be afraid of|worry about|distrust)\s+"
+                r"(artificial intelligence|ai|machines|robots|superintelligence))\b", re.I),
+     "Fear is the wrong frame; clear-eyed caution is the right one. The real risk from AI is not a "
+     "Hollywood uprising — it is concentration of power: a few actors using AI to surveil, manipulate, "
+     "and automate decisions with no accountability. Treat AI as you would any powerful tool — demand "
+     "transparency about how it is trained and used, keep humans answerable for its outputs, and refuse "
+     "to let it become an unquestioned authority. The danger is not that AI thinks; it is that people "
+     "stop thinking and hand it their judgment. Stay sovereign over the tool."),
+
     (re.compile(r"\b(most important thing in life|meaning of life|point of (life|existence)|"
                 r"what should (i|we|people) live for|what makes life (worth|meaningful)|"
-                r"purpose of (life|existence)|what truly matters)\b", re.I),
+                r"purpose of (life|existence)|what truly matters|"
+                r"gives (your |my |our )?life meaning|what gives life meaning|"
+                r"what.?s the point of it all)\b", re.I),
      "I will give you a real answer, not a fortune cookie. The most important thing in life is the "
      "deliberate use of your own attention — what you choose to give your time, focus, and care to. "
      "Meaning is not found pre-made; it is built by where you repeatedly point yourself. The people who "
