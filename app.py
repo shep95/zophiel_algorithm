@@ -371,14 +371,20 @@ def ask():
             print(f"[zophiel] WARNING: toll-like-receptor scan failed, "
                   f"injection telemetry not recorded: {_scan_err}")
 
-    # If corpus is still loading, go straight to web search
+    # Refuse to answer until the knowledge index is ready. Before the corpus
+    # finishes loading there is nothing to retrieve from, and the old web-scrape
+    # fallback returned unrelated "random sentence" answers that looked confident
+    # but were wrong. An honest "still warming up" is far better than a wrong
+    # answer — fail safe, not fail confident. 503 tells clients to retry shortly.
     if not _READY or INDEX is None:
-        web_hits, web_source = _web_fallback(query)
-        reply = _build_web_reply(query, web_hits, decode="")
-        if not reply:
-            reply = "I am still loading my knowledge base. Please ask again in a few seconds."
-        return jsonify({"reply": reply, "method": f"web_fallback({web_source})",
-                        "ready": False})
+        return jsonify({
+            "reply": ("I'm still warming up — my knowledge index is loading and "
+                      "isn't ready to answer accurately yet. Please try again in a "
+                      "few seconds."),
+            "method": "not_ready",
+            "ready": False,
+            "status": _STATUS,
+        }), 503
 
     # 1. Fast path (math / constants)
     fast = fast_answer(query)
