@@ -31,6 +31,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from .immune_memory import ThreatMemory, InflammationController
+
 
 # ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -253,10 +255,11 @@ class DistributedRateLimiter:
         self._max = max_per_minute
         self._buckets: dict[str, list[float]] = {}
 
-    def try_acquire(self, client_id: str) -> bool:
+    def try_acquire(self, client_id: str, limit_override: int | None = None) -> bool:
         now = time.time()
+        limit = self._max if limit_override is None else max(1, limit_override)
         hits = [t for t in self._buckets.get(client_id, []) if t >= now - 60]
-        if len(hits) >= self._max:
+        if len(hits) >= limit:
             return False
         hits.append(now)
         self._buckets[client_id] = hits
@@ -456,6 +459,8 @@ class NomadSecurityStack:
     replay_guard: ReplayGuard
     vital_guard: VitalGuard
     ssrf_guard:  SSRFGuard
+    threat_memory: ThreatMemory
+    inflammation:  InflammationController
 
 
 def build_security_stack(
@@ -483,6 +488,8 @@ def build_security_stack(
         replay_guard = ReplayGuard(),
         vital_guard  = vital,
         ssrf_guard   = SSRFGuard(),
+        threat_memory = ThreatMemory(),
+        inflammation  = InflammationController(),
     )
     audit.record("job_started", detail="NOMAD security stack initialised")
     return stack
@@ -495,46 +502,56 @@ def validate_request(stack: NomadSecurityStack, method: str, path: str,
     Full request validation pipeline.
     Returns (allowed: bool, reason: str).
     """
+    def _reject(reason: str, event: str, *, peer: str | None = None,
+                detail: str | None = None) -> tuple[bool, str]:
+        """Record an offense, build adaptive-immunity memory, raise inflammation."""
+        stack.audit.record(event, correlation_id=correlation_id,
+                           peer=peer if peer is not None else client_id, detail=detail)
+        stack.threat_memory.record_offense(client_id, reason)
+        stack.inflammation.record_denial()
+        return False, reason
+
     # Vitals check
     if not stack.vital_guard.is_vital():
         stack.audit.record("organism_lockdown", correlation_id=correlation_id, detail=path)
         return False, "organism_lockdown"
 
+    # Adaptive immunity: a client whose antibody titer is high is quarantined
+    # before any other work — the organism remembers and isolates repeat threats.
+    if stack.threat_memory.is_quarantined(client_id):
+        stack.audit.record("client_rejected_allowlist", correlation_id=correlation_id,
+                           peer=client_id, detail="quarantined")
+        return False, "quarantined"
+
     # Client allowlist
     if not stack.allowlist.is_allowed(client_id):
-        stack.audit.record("client_rejected_allowlist", correlation_id=correlation_id, peer=client_id)
-        return False, "client_not_in_allowlist"
+        return _reject("client_not_in_allowlist", "client_rejected_allowlist", peer=client_id)
 
-    # Rate limiting
-    if not stack.distributed.try_acquire(client_id):
-        stack.audit.record("rate_limit_exceeded", correlation_id=correlation_id, peer=client_id)
-        return False, "rate_limit_exceeded"
+    # Rate limiting — tightened body-wide when the organism is inflamed (fever).
+    effective = max(1, int(stack.distributed._max * stack.inflammation.rate_multiplier()))
+    if not stack.distributed.try_acquire(client_id, limit_override=effective):
+        return _reject("rate_limit_exceeded", "rate_limit_exceeded", peer=client_id)
 
     if not stack.rate_limiter.try_acquire():
-        stack.audit.record("rate_limit_exceeded", correlation_id=correlation_id, detail="global")
-        return False, "global_rate_limit"
+        return _reject("global_rate_limit", "rate_limit_exceeded", detail="global")
 
     # Auth
     principal: dict | None = None
     if stack.auth.require_auth:
         if not token:
-            stack.audit.record("api_denied", correlation_id=correlation_id, detail="no_token")
             stack.rate_limiter.release()
-            return False, "authentication_required"
+            return _reject("authentication_required", "api_denied", detail="no_token")
         principal = stack.auth.verify_token(token)
         if not principal:
-            stack.audit.record("api_denied", correlation_id=correlation_id, detail="invalid_token")
             stack.rate_limiter.release()
-            return False, "invalid_token"
+            return _reject("invalid_token", "api_denied", detail="invalid_token")
     else:
         principal = {"subject": "anonymous", "roles": ["operator"]}
 
     # RBAC
     if not stack.rbac.authorize(principal, method, path):
-        stack.audit.record("api_denied", correlation_id=correlation_id,
-                           detail=f"rbac_denied {method} {path}")
         stack.rate_limiter.release()
-        return False, "permission_denied"
+        return _reject("permission_denied", "api_denied", detail=f"rbac_denied {method} {path}")
 
     # validate_request is a synchronous gate, not a long-lived connection.
     # Release the global connection slot we acquired above so _active does not
@@ -564,4 +581,18 @@ def ssrf_check(url: str) -> tuple[bool, str | None]:
     return get_stack().ssrf_guard.validate_url(url)
 
 def vitals() -> dict:
-    return get_stack().vital_guard.vitals_report()
+    stack = get_stack()
+    report = stack.vital_guard.vitals_report()
+    # Surface adaptive-immunity organs alongside the innate ones.
+    tm = stack.threat_memory.stats()
+    inf = stack.inflammation.stats()
+    report["adaptive_immunity"] = tm
+    report["inflammation"] = inf
+    report["organs"].extend([
+        {"id": "antibody_memory", "name": "Antibody Memory (T/B cells)",
+         "state": "vital", "quarantined": tm["quarantined"]},
+        {"id": "inflammation",    "name": "Inflammation Response",
+         "state": "inflamed" if inf["inflammation_level"] > 0 else "vital",
+         "level": inf["inflammation_level"]},
+    ])
+    return report

@@ -312,6 +312,18 @@ def health():
     }), 200
 
 
+@app.route("/organism/vitals")
+def organism_vitals():
+    """Public read-only view of the Sovereign Organism immune state."""
+    if _ORGANISM is None:
+        return jsonify({"vital": True, "organs": [], "note": "organism not initialised"}), 200
+    try:
+        from brain.mind.nomad_security import vitals as _vitals
+        return jsonify(_vitals()), 200
+    except Exception as e:
+        return jsonify({"vital": False, "error": str(e)}), 200
+
+
 @app.route("/ask", methods=["POST"])
 def ask():
     if not _check_auth():
