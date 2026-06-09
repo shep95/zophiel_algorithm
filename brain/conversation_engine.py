@@ -41,6 +41,30 @@ _CONTINUATION_WORDS = frozenset(
     {"more", "deeper", "continue", "go", "dive", "elaborate", "expand", "else"}
 )
 
+# Contentless filler — the structural/discourse words that make up referential
+# follow-ups ("tell me more about that", "go deeper", "what else"). A message
+# whose words are ALL filler/continuation has no subject of its own. Anything
+# left over after removing these is a real subject noun, and a real subject means
+# a NEW question — not a continuation.
+_CONT_FILLER = frozenset({
+    "dive", "deeper", "deep", "go", "going", "gone", "tell", "telling", "told",
+    "me", "my", "more", "about", "that", "this", "it", "explain", "explaining",
+    "what", "whats", "keep", "continue", "continuing", "else", "expand",
+    "expanding", "elaborate", "detail", "details", "and", "then", "say",
+    "saying", "talk", "talking", "the", "please", "can", "could", "you",
+    "give", "some", "bit", "little", "lot", "further", "also", "now", "well",
+    "okay", "yeah", "yes", "hmm", "like", "just", "there", "here", "are",
+    "was", "were", "into", "onto", "with",
+})
+
+
+def _residual_subject_terms(q: str) -> list[str]:
+    """Content words left after stripping continuation/filler words. A non-empty
+    result means the message names a subject of its own."""
+    words = re.findall(r"[a-z]{3,}", q.lower())
+    return [w for w in words
+            if w not in _CONT_FILLER and w not in _CONTINUATION_WORDS]
+
 _CLASSIFICATION_LEAK_RE = re.compile(r"^[a-z_]+\.[a-z_]+\.[a-z_]+", re.I)
 _SOURCES_SUFFIX_RE = re.compile(r"\n\nSources:.*$", re.DOTALL | re.IGNORECASE)
 _ROBOTIC_MARKERS = (
@@ -68,16 +92,33 @@ class ResolvedMessage:
 
 
 def is_continuation_message(text: str) -> bool:
-    """Layer 2 — short vague messages that continue the prior thread."""
+    """Layer 2 — referential follow-ups that continue the prior thread.
+
+    A message is a continuation only when it is purely referential AND carries no
+    subject of its own. "Go deeper" / "tell me more" → continuation. "Explain
+    quantum computers" names a subject → a NEW question, full stop.
+
+    Fix 1 (the deepest): a new subject always vetoes the continuation guess.
+    Continuation detection must compare meaning (did the subject change?), not
+    just grammar (word count, keyword presence). Trusting a keyword list alone is
+    what let "explain quantum computers" bleed into the previous "AI" topic.
+    """
     q = text.strip().lower().rstrip("?").strip()
     if not q or len(q) > 80:
         return False
-    if any(phrase in q for phrase in _CONTINUATION_PHRASES):
-        return True
-    words = q.split()
-    if len(words) <= 4 and any(w in _CONTINUATION_WORDS for w in words):
-        return True
-    return False
+
+    referential = any(phrase in q for phrase in _CONTINUATION_PHRASES)
+    if not referential:
+        words = q.split()
+        referential = len(words) <= 4 and any(w in _CONTINUATION_WORDS for w in words)
+    if not referential:
+        return False
+
+    # Fix 1 / Fix 2: if the message names a real subject of its own, it is NOT a
+    # vague continuation — it's a new question. Only pure references survive.
+    if _residual_subject_terms(q):
+        return False
+    return True
 
 
 def resolve_message(text: str, session_id: str | None) -> ResolvedMessage:
@@ -158,14 +199,25 @@ def update_stack_from_turn(
     )
 
 
-def _continuation_search_query(stack: ConversationStack | None, hist: list[dict[str, str]]) -> str:
+def _continuation_search_query(
+    stack: ConversationStack | None,
+    hist: list[dict[str, str]],
+    user_text: str = "",
+) -> str:
     from brain.web_search import rewrite_live_news_query
 
     topic = (stack.active_topic if stack else "") or (hist[-1]["user"] if hist else "")
     depth = stack.depth_level if stack else 1
+
+    # Fix 3: a genuine follow-up still carries the user's own emphasis. Blend the
+    # active topic WITH the residual subject/emphasis words the user just typed,
+    # instead of collapsing every continuation into the same canned topic search.
+    focus = " ".join(_residual_subject_terms(user_text)) if user_text else ""
+    base = f"{topic} {focus}".strip() if focus else topic
+
     if depth <= 1:
-        return rewrite_live_news_query(f"{topic} latest news analysis")
-    return rewrite_live_news_query(f"{topic} in depth analysis implications")
+        return rewrite_live_news_query(f"{base} latest news analysis")
+    return rewrite_live_news_query(f"{base} in depth analysis implications")
 
 
 def audit_response(reply: str, *, is_continuation: bool, active_topic: str) -> str | None:
@@ -228,7 +280,7 @@ def try_continuation_response(
 
         last_user = hist[-1]["user"]
         if topic_kind in ("search_opinion", "live_news") or is_search_question(last_user):
-            query = _continuation_search_query(stack, hist)
+            query = _continuation_search_query(stack, hist, text)
             payload = search_and_opine_fn(
                 query,
                 session_id=session_id,
@@ -241,7 +293,7 @@ def try_continuation_response(
         payload = philosophy_fn(enriched, session_id=session_id)
 
     if payload is None:
-        query = _continuation_search_query(stack, hist)
+        query = _continuation_search_query(stack, hist, text)
         from brain.web_search import web_search_enabled
 
         if web_search_enabled():
@@ -268,7 +320,7 @@ def try_continuation_response(
     reply = _SOURCES_SUFFIX_RE.sub("", reply).strip()
     audited = audit_response(reply, is_continuation=True, active_topic=active_topic)
     if audited is None and topic_kind in ("search_opinion", "live_news"):
-        query = _continuation_search_query(stack, hist)
+        query = _continuation_search_query(stack, hist, text)
         payload = search_and_opine_fn(
             query,
             session_id=session_id,
