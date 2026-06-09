@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from .immune_memory import ThreatMemory, InflammationController
+from .organ_registry import SovereignOrganism, OrganState
 
 
 # ── Types ─────────────────────────────────────────────────────────────────────
@@ -461,6 +462,8 @@ class NomadSecurityStack:
     ssrf_guard:  SSRFGuard
     threat_memory: ThreatMemory
     inflammation:  InflammationController
+    organism:      SovereignOrganism
+    memory_path:   str | None = None
 
 
 def build_security_stack(
@@ -478,6 +481,43 @@ def build_security_stack(
     vital       = VitalGuard(audit, dev_mode=dev_mode)
     vital.pulse_check()
 
+    threat_memory = ThreatMemory()
+    inflammation  = InflammationController()
+
+    # The 17-organ body, with live probes for organs we can actually check.
+    def _audit_probe() -> tuple[OrganState, str]:
+        ok, errs = audit.verify_chain()
+        return ("vital", "chain intact") if ok else ("critical", errs[0] if errs else "chain broken")
+
+    organism = SovereignOrganism(
+        probes={
+            "audit_immune": _audit_probe,
+            "antibody_memory": lambda: ("vital", f"{threat_memory.stats()['quarantined']} quarantined"),
+            "inflammation": lambda: (
+                ("vital" if inflammation.level() == 0 else "vital"),
+                f"level {inflammation.level():.2f}"),
+        },
+        dev_mode=dev_mode,
+    )
+    organism.pulse()
+
+    # Adaptive immunity persistence: restore antibody memory from prior runs so
+    # immunity survives restarts, then vaccinate from a known-bad IOC feed.
+    memory_path = os.path.join(log_dir, "antibody_memory.json") if log_dir else None
+    if memory_path:
+        restored = threat_memory.load(memory_path)
+        if restored:
+            audit.record("job_started", detail=f"antibody memory restored: {restored} cells")
+    ioc_file = os.environ.get("ZOPHIEL_IOC_FILE")
+    if ioc_file and os.path.exists(ioc_file):
+        try:
+            with open(ioc_file, encoding="utf-8") as f:
+                iocs = [ln.strip() for ln in f if ln.strip() and not ln.startswith("#")]
+            seeded = threat_memory.vaccinate(iocs)
+            audit.record("job_started", detail=f"vaccinated against {seeded} IOCs")
+        except Exception as e:
+            audit.record("job_failed", detail=f"IOC vaccination failed: {e}")
+
     stack = NomadSecurityStack(
         audit        = audit,
         rbac         = RbacPolicy(),
@@ -488,8 +528,10 @@ def build_security_stack(
         replay_guard = ReplayGuard(),
         vital_guard  = vital,
         ssrf_guard   = SSRFGuard(),
-        threat_memory = ThreatMemory(),
-        inflammation  = InflammationController(),
+        threat_memory = threat_memory,
+        inflammation  = inflammation,
+        organism      = organism,
+        memory_path   = memory_path,
     )
     audit.record("job_started", detail="NOMAD security stack initialised")
     return stack
@@ -582,17 +624,41 @@ def ssrf_check(url: str) -> tuple[bool, str | None]:
 
 def vitals() -> dict:
     stack = get_stack()
-    report = stack.vital_guard.vitals_report()
-    # Surface adaptive-immunity organs alongside the innate ones.
-    tm = stack.threat_memory.stats()
-    inf = stack.inflammation.stats()
-    report["adaptive_immunity"] = tm
-    report["inflammation"] = inf
-    report["organs"].extend([
-        {"id": "antibody_memory", "name": "Antibody Memory (T/B cells)",
-         "state": "vital", "quarantined": tm["quarantined"]},
-        {"id": "inflammation",    "name": "Inflammation Response",
-         "state": "inflamed" if inf["inflammation_level"] > 0 else "vital",
-         "level": inf["inflammation_level"]},
-    ])
+    stack.organism.pulse()                       # refresh the 17-organ body
+    report = stack.organism.report()
+    report["adaptive_immunity"] = stack.threat_memory.stats()
+    report["inflammation"] = stack.inflammation.stats()
     return report
+
+
+def scan_and_record(client_id: str, payload, correlation_id: str | None = None) -> list[str]:
+    """
+    Toll-like-receptor scan of a request payload (innate pattern recognition).
+    Any injection-shaped content becomes an antigen the adaptive system
+    remembers. Returns the list of attack labels detected (empty = clean).
+    """
+    from .pattern_immunity import scan_payload, worst_offense
+    stack = get_stack()
+    hits = scan_payload(payload)
+    if not hits:
+        return []
+    offense = worst_offense(hits) or "tampering_injection"
+    stack.threat_memory.record_offense(client_id, offense)
+    stack.inflammation.record_denial()
+    stack.audit.record("api_denied", correlation_id=correlation_id, peer=client_id,
+                       detail="pattern_immunity: " + ",".join(h.label for h in hits))
+    return [h.label for h in hits]
+
+
+def persist_memory() -> None:
+    """Flush antibody memory to disk if a persistence path is configured."""
+    stack = get_stack()
+    if stack.memory_path:
+        try:
+            stack.threat_memory.save(stack.memory_path)
+        except Exception:
+            pass
+
+
+def is_quarantined(client_id: str) -> bool:
+    return get_stack().threat_memory.is_quarantined(client_id)

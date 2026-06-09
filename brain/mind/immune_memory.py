@@ -35,6 +35,7 @@ OFFENSE_WEIGHTS: dict[str, float] = {
     "invalid_token":            3.0,   # active credential probing
     "replay_detected":          4.0,   # captured-traffic replay
     "ssrf_blocked":             4.0,   # trying to pivot to internal targets
+    "tampering_injection":      4.0,   # SQLi / XSS / template injection in body
     "client_not_in_allowlist":  2.0,
     "rate_limit_exceeded":      1.0,   # could be a noisy-but-legit client
     "global_rate_limit":        0.5,
@@ -127,6 +128,82 @@ class ThreatMemory:
     def titer(self, client_id: str) -> float:
         ab = self._cells.get(client_id)
         return 0.0 if ab is None else self._current_titer(ab, self._clock())
+
+    def vaccinate(self, client_ids, titer: float | None = None) -> int:
+        """
+        Pre-seed immunity from a known-bad feed (IOC list). Like a vaccine, this
+        primes the antibody response BEFORE first contact, so a known-hostile
+        client is quarantined on its very first request. Returns count seeded.
+        """
+        now = self._clock()
+        level = self._quar_threshold + 1.0 if titer is None else titer
+        n = 0
+        for cid in client_ids:
+            cid = str(cid).strip()
+            if not cid:
+                continue
+            ab = self._cells.get(cid) or _Antibodies(last_update=now)
+            ab.titer = max(ab.titer, level)
+            ab.last_update = now
+            ab.exposures += 1  # treated as prior exposure -> faster re-escalation
+            if ab.titer >= self._quar_threshold:
+                over = ab.titer - self._quar_threshold
+                ab.quarantined_until = now + min(3600.0, self._half_life * (1.0 + over))
+            self._cells[cid] = ab
+            n += 1
+        return n
+
+    def save(self, path) -> None:
+        """Persist antibody memory so immunity survives a restart (no amnesia)."""
+        import json
+        from pathlib import Path
+        now = self._clock()
+        data = {
+            "saved_at": now,
+            "half_life_s": self._half_life,
+            "cells": {
+                cid: {
+                    "titer": self._current_titer(ab, now),
+                    "exposures": ab.exposures,
+                    "quarantined_until": ab.quarantined_until,
+                }
+                for cid, ab in self._cells.items()
+                if self._current_titer(ab, now) > 0 or ab.quarantined_until > now
+            },
+        }
+        p = Path(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_suffix(p.suffix + ".tmp")
+        tmp.write_text(json.dumps(data), encoding="utf-8")
+        tmp.replace(p)  # atomic
+
+    def load(self, path) -> int:
+        """Restore antibody memory written by save(). Returns cells restored."""
+        import json
+        from pathlib import Path
+        p = Path(path)
+        if not p.exists():
+            return 0
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            return 0
+        now = self._clock()
+        saved_at = float(data.get("saved_at", now))
+        elapsed = max(0.0, now - saved_at)
+        decay = math.exp(-self._decay_k * elapsed)  # age the memory while it was offline
+        restored = 0
+        for cid, c in data.get("cells", {}).items():
+            titer = float(c.get("titer", 0.0)) * decay
+            if titer < 1e-6 and float(c.get("quarantined_until", 0)) <= now:
+                continue
+            self._cells[cid] = _Antibodies(
+                titer=titer, last_update=now,
+                exposures=int(c.get("exposures", 0)),
+                quarantined_until=float(c.get("quarantined_until", 0.0)),
+            )
+            restored += 1
+        return restored
 
     def _evict(self, now: float) -> None:
         # Drop the coldest 10% of clients (lowest current titer) to bound memory.

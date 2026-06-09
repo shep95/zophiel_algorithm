@@ -266,6 +266,41 @@ The `cyber/` module wraps every query through a post-quantum cryptographic defen
 └─────────────────────────────────────────────────────────┘
 ```
 
+### ◈ The Sovereign Organism as a Living Immune System
+
+The cyber layer doesn't mimic one animal — it mimics a **living body's immune
+system**. Defence is split into innate (always-on barriers) and adaptive
+(memory of past attackers), exactly like real biology:
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                    INNATE IMMUNITY (barriers)                         │
+│  Gateway Skin · Rate Nerves · SSRF Lungs · body-size barrier         │
+│  Toll-like receptors → signature-scan SQLi/XSS/traversal/cmd-inject  │
+│  (recognise the SHAPE of an attack without having seen it before)     │
+├──────────────────────────────────────────────────────────────────────┤
+│                  ADAPTIVE IMMUNITY (memory)                           │
+│  Antibody Memory  → per-client threat "titer" rises on each offense  │
+│                     and DECAYS exponentially (immune memory fades)    │
+│  Quarantine       → high titer isolates a client; auto-released       │
+│  Secondary resp.  → repeat offenders escalate FASTER (memory boost)   │
+│  Inflammation     → graded body-wide fever clamps throughput under    │
+│                     sustained assault, then heals to baseline         │
+│  Vaccination      → pre-seed immunity from an IOC feed (ZOPHIEL_IOC_  │
+│                     FILE) so known-bad clients are blocked on contact │
+│  Persistence      → antibody memory saved to disk — survives restart  │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+The body has **17 interlocking organs** in a dependency graph. A child organ
+checks its parents on every pulse — so a single critical organ trips a
+body-wide lockdown, and the interlocking chains mean an attacker must keep
+*all* organs healthy to operate. Live state is exposed at `GET /organism/vitals`.
+
+Tests: `python test_immune_system.py` (9 tests — titer/decay/quarantine,
+secondary response, fever+recovery, 17-organ lockdown, toll-like receptors,
+persistence, vaccination, live-gate integration).
+
 ---
 
 ## ◈ What Makes This Different From an LLM

@@ -80,10 +80,78 @@ def test_integration_with_stack():
     print("PASS: adaptive immunity integrated into the live validate_request gate")
 
 
+def test_17_organ_body():
+    from brain.mind.organ_registry import SovereignOrganism, organ_activation_order, ORGAN_DEPENDENCIES
+    order = organ_activation_order()
+    assert len(order) == 17, f"expected 17 organs, got {len(order)}"
+    # parents precede children
+    for organ in order:
+        for dep in ORGAN_DEPENDENCIES[organ]:
+            assert order.index(dep) < order.index(organ), f"{dep} must precede {organ}"
+    organ = SovereignOrganism(dev_mode=True)
+    organ.pulse()
+    assert organ.is_vital(), "body should be vital with healthy core organs"
+    # A failing probe trips lockdown
+    bad = SovereignOrganism(probes={"audit_immune": lambda: ("critical", "tampered")}, dev_mode=True)
+    bad.pulse()
+    assert not bad.is_vital(), "critical organ must trip lockdown"
+    # children of the failed organ also go critical (interlocking chains)
+    rep = bad.report()
+    states = {o["id"]: o["state"] for o in rep["organs"]}
+    assert states["audit_immune"] == "critical"
+    assert states["gateway_skin"] == "critical", "child organ fails when parent fails"
+    print("PASS: 17-organ body — topological order + interlocking lockdown")
+
+
+def test_toll_like_receptors():
+    from brain.mind.pattern_immunity import scan_payload, worst_offense
+    assert not scan_payload({"query": "how does photosynthesis work?"}), "clean prose must not trip"
+    sqli = scan_payload({"query": "admin' OR 1=1 --"})
+    assert any(h.label == "sqli" for h in sqli), "must catch SQLi"
+    xss = scan_payload({"q": "<script>steal()</script>"})
+    assert any(h.label == "xss" for h in xss), "must catch XSS"
+    trav = scan_payload({"path": "../../etc/passwd"})
+    assert any(h.label == "path_traversal" for h in trav)
+    cmd = scan_payload({"x": "; cat /etc/shadow"})
+    assert worst_offense(cmd) == "invalid_token", "cmd injection = high severity"
+    print("PASS: toll-like receptors detect SQLi/XSS/traversal/cmd-injection, ignore prose")
+
+
+def test_persistence_survives_restart():
+    import tempfile, os
+    from brain.mind.immune_memory import ThreatMemory
+    path = os.path.join(tempfile.mkdtemp(), "ab.json")
+    clk = [1000.0]
+    a = ThreatMemory(half_life_s=1e9, clock=lambda: clk[0])
+    for _ in range(3):
+        a.record_offense("villain", "ssrf_blocked")
+    assert a.is_quarantined("villain")
+    a.save(path)
+    b = ThreatMemory(half_life_s=1e9, clock=lambda: clk[0])  # "fresh process"
+    n = b.load(path)
+    assert n >= 1, "memory restored from disk"
+    assert b.is_quarantined("villain"), "immunity survived the restart"
+    print("PASS: antibody memory persists across restart (no amnesia)")
+
+
+def test_vaccination():
+    from brain.mind.immune_memory import ThreatMemory
+    tm = ThreatMemory()
+    seeded = tm.vaccinate(["6.6.6.6", "evil.example.com"])
+    assert seeded == 2
+    assert tm.is_quarantined("6.6.6.6"), "known-bad IOC quarantined on first contact"
+    assert not tm.is_quarantined("1.2.3.4"), "unknown client unaffected"
+    print("PASS: vaccination pre-immunises against known IOCs before first contact")
+
+
 if __name__ == "__main__":
     test_titer_rises_and_quarantines()
     test_memory_decays_and_releases()
     test_secondary_response_is_stronger()
     test_inflammation_fever_and_recovery()
     test_integration_with_stack()
+    test_17_organ_body()
+    test_toll_like_receptors()
+    test_persistence_survives_restart()
+    test_vaccination()
     print("\n*** ALL IMMUNE-SYSTEM TESTS PASSED ***")

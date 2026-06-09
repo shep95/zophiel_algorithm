@@ -44,8 +44,12 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_BODY_BYTES
 # Wire the Sovereign Organism (immune system) into the live request path.
 # Per-client throttling = innate immunity; audit chain = adaptive memory.
 try:
-    from brain.mind.nomad_security import get_stack, validate_request as _organism_gate
+    import atexit
+    from brain.mind.nomad_security import (
+        get_stack, validate_request as _organism_gate, persist_memory as _persist_memory,
+    )
     _ORGANISM = get_stack()
+    atexit.register(_persist_memory)  # flush adaptive immunity to disk on shutdown
 except Exception as _e:  # never let the security layer crash the API outright
     print(f"[Zophiel] organism init warning: {_e}")
     _ORGANISM = None
@@ -342,6 +346,18 @@ def ask():
     query = (body.get("query") or "").strip()
     if not query:
         return jsonify({"error": "query field required"}), 400
+
+    # Toll-like-receptor scan: injection-shaped input becomes an antigen the
+    # organism remembers. We don't reject the query (it may be a security
+    # question), but repeat offenders build titer and get quarantined.
+    if _ORGANISM is not None:
+        try:
+            from brain.mind.nomad_security import scan_and_record
+            _cid = (request.headers.get("x-forwarded-for", "")
+                    or request.remote_addr or "anonymous").split(",")[0].strip()
+            scan_and_record(_cid, body)
+        except Exception:
+            pass
 
     # If corpus is still loading, go straight to web search
     if not _READY or INDEX is None:
