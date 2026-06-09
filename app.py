@@ -38,8 +38,11 @@ from aureon_test_runner import RagIndex, fast_answer, asher_decode, synthesize, 
 from cyber_defence import analyse_threat
 
 app = Flask(__name__)
-# Reject oversized bodies before they are read into memory (innate-immunity barrier).
-app.config["MAX_CONTENT_LENGTH"] = MAX_BODY_BYTES
+# Global cap is the larger UPLOAD size so /ingest can accept real files. /ask keeps
+# enforcing the tight 64KB MAX_BODY_BYTES itself (innate-immunity barrier) at its
+# top, so chat requests are still rejected early if oversized.
+MAX_UPLOAD_BYTES = int(os.environ.get("AUREON_MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
 
 # Wire the Sovereign Organism (immune system) into the live request path.
 # Per-client throttling = innate immunity; audit chain = adaptive memory.
@@ -330,6 +333,11 @@ def organism_vitals():
 
 @app.route("/ask", methods=["POST"])
 def ask():
+    # The global MAX_CONTENT_LENGTH is now the larger upload size (for /ingest),
+    # so /ask re-enforces its own tight 64KB chat-body cap here.
+    if request.content_length and request.content_length > MAX_BODY_BYTES:
+        return jsonify({"error": "request too large"}), 413
+
     if not _check_auth():
         return jsonify({"error": "Unauthorized — provide Authorization: Bearer <key>"}), 401
 
@@ -453,6 +461,101 @@ def ask():
         "web_source":  web_source,
         "asher":       decode,
     })
+
+
+def _chunk_text(text: str, max_chunks: int = 400) -> list[str]:
+    """Split extracted upload text into substantive, retrievable chunks. Sentences
+    are merged into ~300-char passages so each chunk carries real context."""
+    if not text or not text.strip():
+        return []
+    try:
+        from aureon_test_runner import _split_sentences
+        sentences = _split_sentences(text)
+    except Exception:
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+    chunks, buf = [], ""
+    for s in sentences:
+        s = s.strip()
+        if not s:
+            continue
+        buf = f"{buf} {s}".strip() if buf else s
+        if len(buf) >= 300:
+            chunks.append(buf)
+            buf = ""
+        if len(chunks) >= max_chunks:
+            break
+    if buf and len(chunks) < max_chunks:
+        chunks.append(buf)
+    return [c for c in chunks if len(c) >= 25]
+
+
+def _append_upload_to_corpus(filename: str, chunks: list[str]) -> None:
+    """Append uploaded chunks to corpus_knowledge.json under an UPLOADS bucket so
+    they survive a corpus rebuild. Best-effort; never raises into the request."""
+    try:
+        with open(KNOW, encoding="utf-8") as fh:
+            corpus = json.load(fh)
+    except Exception:
+        return
+    bucket = corpus.setdefault("UPLOADS", [])
+    existing = set(bucket)
+    for c in chunks:
+        if c not in existing:
+            bucket.append(c)
+            existing.add(c)
+    tmp = KNOW + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(corpus, fh, ensure_ascii=False)
+    os.replace(tmp, KNOW)
+
+
+@app.route("/ingest", methods=["POST"])
+def ingest():
+    """Upload a file (PDF, image, audio, text, CSV, code) and file its extracted
+    text into the corpus so future questions can use it. The reader
+    (brain.file_router.ingest_upload) already exists — this is the missing door."""
+    # Same gate as /ask.
+    if not _check_auth():
+        return jsonify({"error": "unauthorized"}), 401
+
+    # The global cap is the 10MB upload size; file_router enforces it again.
+    f = request.files.get("file")
+    if f is None or not f.filename:
+        return jsonify({"error": "no file provided; send multipart form field 'file'"}), 400
+
+    data = f.read()
+    if not data:
+        return jsonify({"error": "uploaded file is empty"}), 400
+
+    note = request.form.get("message", "")  # optional caption/context
+
+    try:
+        from brain.file_router import ingest_upload, MAX_UPLOAD_BYTES as _RT_MAX_UPLOAD
+        if len(data) > _RT_MAX_UPLOAD:
+            return jsonify({"error": f"file too large (max {_RT_MAX_UPLOAD} bytes)"}), 413
+        # persist=False: extract text only. file_router's own persist targets a
+        # different storage backend; we file the text into THIS engine's corpus
+        # below so /ask can actually retrieve it.
+        result = ingest_upload(f.filename, data, message=note, persist=False)
+    except Exception as e:
+        return jsonify({"error": f"ingest failed: {e}"}), 500
+
+    # File the extracted text into the live corpus: split into substantive chunks,
+    # add to the in-memory index (immediately queryable) and append to the JSON
+    # corpus (so it survives a rebuild/restart).
+    chunks_added = 0
+    try:
+        chunks = _chunk_text(result.text)
+        if chunks:
+            if INDEX is not None:
+                chunks_added = INDEX.add_documents(chunks, source=f"upload:{f.filename}")
+            _append_upload_to_corpus(f.filename, chunks)
+    except Exception as e:
+        print(f"[zophiel] WARNING: ingest text extracted but corpus persist failed: {e}")
+
+    out = result.to_dict()
+    out["chunks_indexed"] = chunks_added
+    return jsonify({"status": "ingested", "file": out})
 
 
 if __name__ == "__main__":

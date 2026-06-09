@@ -179,6 +179,18 @@ class RagIndex:
         self._vectors = self._vectorize([d["text"] for d in docs])
         self._built = True
 
+    def add_documents(self, texts, source="upload"):
+        """Append new documents (e.g. from an uploaded file) and rebuild the
+        TF-IDF vectors so they are immediately queryable. Returns count added."""
+        clean = [t.strip() for t in texts if t and t.strip()]
+        if not clean:
+            return 0
+        start_id = max((d.get("id", 0) for d in self._docs), default=0)
+        new_docs = [{"id": start_id + i + 1, "text": t, "source": source}
+                    for i, t in enumerate(clean)]
+        self.build((self._docs or []) + new_docs)
+        return len(new_docs)
+
     def query(self, text, top_k=6):
         if not self._built or self._vectors is None:
             return []

@@ -27,7 +27,21 @@ from brain.multimodal_processors import (
     text_embedding,
     tier_status,
 )
-from pipeline.config import MULTIMODAL_DIR, ensure_dirs
+try:
+    from pipeline.config import MULTIMODAL_DIR, ensure_dirs
+except ModuleNotFoundError:
+    # The full pipeline package is optional. Without it, fall back to a local
+    # inbox under the project so file ingestion still works standalone (this is
+    # what lets POST /ingest function without the heavyweight pipeline install).
+    import os as _os
+
+    MULTIMODAL_DIR = Path(
+        _os.environ.get("AUREON_MULTIMODAL_DIR")
+        or (Path(__file__).resolve().parent.parent / "data" / "multimodal")
+    )
+
+    def ensure_dirs() -> None:
+        MULTIMODAL_DIR.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
 

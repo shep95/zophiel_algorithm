@@ -13,3 +13,5 @@ build/
 Thumbs.db
 node_modules/
 data/*.db
+data/multimodal/
+data/corpus_knowledge.json.tmp
